@@ -68,6 +68,7 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `DB_NAME` | `virtum_booking` |
 | `DB_USER` | `virtum_booking` |
 | `DB_PASSWORD` | `strong-password` |
+| `ADMIN_API_KEY` | `long-random-admin-key` |
 
 ## Підключення до virtum-vr.com.ua
 1. Підняти цей backend на домені, наприклад `https://booking-api.virtum-vr.com.ua`.
@@ -112,7 +113,41 @@ bindBookingForm(document.querySelector('#booking-form'), {
 deploy/nginx-booking-api.conf
 ```
 
+## Admin API
+Адмінські endpoints захищені header-ом:
+
+```text
+X-Admin-Api-Key: <ADMIN_API_KEY>
+```
+
+### `GET /api/v1/admin/bookings`
+Повертає бронювання за період. Параметри необовʼязкові:
+
+```text
+from=2026-05-20
+to=2026-05-31
+status=CONFIRMED
+```
+
+Якщо `from/to` не передані, backend повертає бронювання від сьогодні на 30 днів вперед.
+
+### `PATCH /api/v1/admin/bookings/{id}/status`
+Оновлює статус бронювання.
+
+```json
+{
+  "status": "CANCELLED"
+}
+```
+
+Підтримувані статуси:
+
+```text
+CONFIRMED
+CANCELLED
+```
+
 ## Наступний production крок
-- Додати JWT/адмін-панель для перегляду та керування бронюваннями.
+- Додати UI адмін-панелі поверх Admin API.
 - Додати SMS/Telegram нотифікації.
 - Додати інтеграційні тести для PostgreSQL профілю.

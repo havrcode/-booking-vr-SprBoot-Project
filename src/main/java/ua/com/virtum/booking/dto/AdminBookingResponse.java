@@ -1,10 +1,11 @@
 package ua.com.virtum.booking.dto;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import ua.com.virtum.booking.entity.BookingStatus;
 
-public record BookingResponse(
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+public record AdminBookingResponse(
         Long id,
         String serviceSlug,
         String serviceTitle,
@@ -15,5 +16,7 @@ public record BookingResponse(
         String customerEmail,
         LocalDateTime startsAt,
         LocalDateTime endsAt,
-        BookingStatus status
+        BookingStatus status,
+        LocalDateTime createdAt
 ) {}
+

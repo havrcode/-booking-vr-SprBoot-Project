@@ -1,10 +1,12 @@
 package ua.com.virtum.booking;
 
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
@@ -12,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 
 import static org.hamcrest.Matchers.greaterThan;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -56,12 +59,68 @@ class BookingApiIntegrationTests {
                         .content(payload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.serviceSlug").value("vr-party-60"))
-                .andExpect(jsonPath("$.startsAt").value(startsAtValue));
+                .andExpect(jsonPath("$.startsAt").value(startsAtValue))
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
 
         mockMvc.perform(post("/api/v1/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void adminCanListAndCancelBooking() throws Exception {
+        LocalDateTime startsAt = LocalDateTime.now()
+                .plusDays(8)
+                .withHour(16)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String dateValue = startsAt.toLocalDate().toString();
+
+        String payload = """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Admin Test Customer",
+                  "customerPhone": "+380501234568",
+                  "customerEmail": "admin-test@example.com",
+                  "startsAt": "%s"
+                }
+                """.formatted(startsAtValue);
+
+        MvcResult created = mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andReturn();
+        Integer bookingId = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .param("from", dateValue)
+                        .param("to", dateValue))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .param("from", dateValue)
+                        .param("to", dateValue))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(bookingId))
+                .andExpect(jsonPath("$[0].status").value("CONFIRMED"));
+
+        mockMvc.perform(patch("/api/v1/admin/bookings/{id}/status", bookingId)
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"CANCELLED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
     }
 }
