@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: virtum-booking-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-virtum_booking}
+      POSTGRES_USER: ${DB_USER:-virtum_booking}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD before starting PostgreSQL}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - virtum_booking_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-virtum_booking} -d ${DB_NAME:-virtum_booking}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  virtum_booking_pgdata:
+

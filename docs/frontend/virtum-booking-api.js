@@ -1,0 +1,103 @@
+const DEFAULT_API_BASE = "https://booking-api.virtum-vr.com.ua";
+
+function apiBase() {
+  const configured = window.VIRTUM_BOOKING_API_BASE || DEFAULT_API_BASE;
+  return String(configured).replace(/\/+$/, "");
+}
+
+async function request(path, options = {}) {
+  const response = await fetch(`${apiBase()}${path}`, {
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+    ...options,
+  });
+
+  const contentType = response.headers.get("content-type") || "";
+  const body = contentType.includes("application/json")
+    ? await response.json().catch(() => null)
+    : await response.text().catch(() => "");
+
+  if (!response.ok) {
+    const error = new Error(errorMessage(response.status, body));
+    error.status = response.status;
+    error.body = body;
+    throw error;
+  }
+
+  return body;
+}
+
+export function listServices() {
+  return request("/api/v1/services");
+}
+
+export function listBookingsByDate(date) {
+  return request(`/api/v1/bookings?date=${encodeURIComponent(date)}`);
+}
+
+export function createBooking(payload) {
+  return request("/api/v1/bookings", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function toLocalIsoDateTime(date, time) {
+  if (!date || !time) {
+    return "";
+  }
+
+  return `${date}T${time.length === 5 ? `${time}:00` : time}`;
+}
+
+export function readBookingForm(form) {
+  const data = new FormData(form);
+
+  return {
+    serviceSlug: String(data.get("serviceSlug") || "").trim(),
+    customerName: String(data.get("customerName") || "").trim(),
+    customerPhone: String(data.get("customerPhone") || "").trim(),
+    customerEmail: String(data.get("customerEmail") || "").trim(),
+    startsAt: toLocalIsoDateTime(data.get("date"), data.get("time")),
+  };
+}
+
+export function bindBookingForm(form, callbacks = {}) {
+  const submitButton = form.querySelector("[type='submit']");
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    submitButton?.setAttribute("disabled", "disabled");
+
+    try {
+      const booking = await createBooking(readBookingForm(form));
+      callbacks.onSuccess?.(booking);
+      form.reset();
+    } catch (error) {
+      callbacks.onError?.(error);
+    } finally {
+      submitButton?.removeAttribute("disabled");
+    }
+  });
+}
+
+function errorMessage(status, body) {
+  if (status === 409) {
+    return "Цей час вже зайнятий. Оберіть інший слот.";
+  }
+
+  if (status === 400) {
+    return "Перевірте дані у формі бронювання.";
+  }
+
+  if (body && typeof body === "object" && body.error) {
+    return String(body.error);
+  }
+
+  return "Не вдалося створити бронювання. Спробуйте ще раз.";
+}
+

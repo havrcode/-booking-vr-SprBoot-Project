@@ -8,13 +8,13 @@ import java.math.BigDecimal;
 public class VrService {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, length = 120)
     private String slug;
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String title;
     @Column(nullable = false)
     private Integer durationMinutes;
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal price;
     private boolean active = true;
 
