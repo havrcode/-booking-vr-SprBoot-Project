@@ -4,17 +4,18 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "bookings", indexes = @Index(name = "idx_booking_starts_at", columnList = "startsAt"))
+@Table(name = "bookings", indexes = @Index(name = "idx_booking_starts_at", columnList = "starts_at"))
 public class Booking {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
+    @JoinColumn(name = "service_id", nullable = false)
     private VrService service;
-    @Column(nullable = false)
+    @Column(nullable = false, length = 120)
     private String customerName;
-    @Column(nullable = false)
+    @Column(nullable = false, length = 32)
     private String customerPhone;
-    @Column(nullable = false)
+    @Column(nullable = false, length = 255)
     private String customerEmail;
     @Column(nullable = false)
     private LocalDateTime startsAt;
