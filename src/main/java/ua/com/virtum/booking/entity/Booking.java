@@ -21,6 +21,9 @@ public class Booking {
     private LocalDateTime startsAt;
     @Column(nullable = false)
     private LocalDateTime endsAt;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private BookingStatus status = BookingStatus.CONFIRMED;
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -37,5 +40,7 @@ public class Booking {
     public void setStartsAt(LocalDateTime startsAt) { this.startsAt = startsAt; }
     public LocalDateTime getEndsAt() { return endsAt; }
     public void setEndsAt(LocalDateTime endsAt) { this.endsAt = endsAt; }
+    public BookingStatus getStatus() { return status; }
+    public void setStatus(BookingStatus status) { this.status = status; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }
