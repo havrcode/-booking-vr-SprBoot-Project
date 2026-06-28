@@ -35,6 +35,12 @@ class BookingApiIntegrationTests {
     }
 
     @Test
+    void servesAdminPage() throws Exception {
+        mockMvc.perform(get("/admin.html"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void createsBookingAndRejectsOverlappingSlot() throws Exception {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(7)

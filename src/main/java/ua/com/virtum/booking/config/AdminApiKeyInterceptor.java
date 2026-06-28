@@ -22,6 +22,8 @@ public class AdminApiKeyInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
             throws IOException {
+        // Browser preflight requests do not carry custom API-key headers consistently.
+        // Real admin requests are still checked below.
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
@@ -42,4 +44,3 @@ public class AdminApiKeyInterceptor implements HandlerInterceptor {
         return false;
     }
 }
-
