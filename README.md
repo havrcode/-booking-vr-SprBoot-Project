@@ -77,6 +77,9 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `DB_USER` | `virtum_booking` |
 | `DB_PASSWORD` | `strong-password` |
 | `ADMIN_API_KEY` | `long-random-admin-key` |
+| `TELEGRAM_NOTIFICATIONS_ENABLED` | `true` |
+| `TELEGRAM_BOT_TOKEN` | `123456:bot-token` |
+| `TELEGRAM_CHAT_ID` | `123456789` |
 
 ## Підключення до virtum-vr.com.ua
 1. Підняти цей backend на домені, наприклад `https://booking-api.virtum-vr.com.ua`.
@@ -168,6 +171,19 @@ http://localhost:8080/admin.html
 https://booking-api.virtum-vr.com.ua/admin.html
 ```
 
+## Telegram нотифікації
+Backend може відправляти повідомлення в Telegram при:
+
+- створенні нового бронювання;
+- зміні статусу бронювання, наприклад `CONFIRMED` -> `CANCELLED`.
+
+Локально нотифікації вимкнені. Для production потрібно задати env-змінні:
+
+```text
+TELEGRAM_NOTIFICATIONS_ENABLED=true
+TELEGRAM_BOT_TOKEN=<token-from-botfather>
+TELEGRAM_CHAT_ID=<chat-or-user-id>
+```
+
 ## Наступний production крок
-- Додати SMS/Telegram нотифікації.
 - Додати інтеграційні тести для PostgreSQL профілю.

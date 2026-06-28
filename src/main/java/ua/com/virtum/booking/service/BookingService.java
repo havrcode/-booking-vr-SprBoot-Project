@@ -11,6 +11,7 @@ import ua.com.virtum.booking.entity.VrService;
 import ua.com.virtum.booking.exception.BadRequestException;
 import ua.com.virtum.booking.exception.ConflictException;
 import ua.com.virtum.booking.exception.NotFoundException;
+import ua.com.virtum.booking.notification.BookingNotificationService;
 import ua.com.virtum.booking.repository.BookingRepository;
 import ua.com.virtum.booking.repository.VrServiceRepository;
 
@@ -22,10 +23,16 @@ import java.util.List;
 public class BookingService {
     private final BookingRepository bookingRepository;
     private final VrServiceRepository vrServiceRepository;
+    private final BookingNotificationService notificationService;
 
-    public BookingService(BookingRepository bookingRepository, VrServiceRepository vrServiceRepository) {
+    public BookingService(
+            BookingRepository bookingRepository,
+            VrServiceRepository vrServiceRepository,
+            BookingNotificationService notificationService
+    ) {
         this.bookingRepository = bookingRepository;
         this.vrServiceRepository = vrServiceRepository;
+        this.notificationService = notificationService;
     }
 
     public List<VrService> listServices() {
@@ -58,7 +65,9 @@ public class BookingService {
         booking.setStartsAt(startsAt);
         booking.setEndsAt(endsAt);
 
-        return toResponse(bookingRepository.save(booking));
+        Booking savedBooking = bookingRepository.save(booking);
+        notificationService.bookingCreated(toAdminResponse(savedBooking));
+        return toResponse(savedBooking);
     }
 
     @Transactional(readOnly = true)
@@ -108,8 +117,15 @@ public class BookingService {
     public AdminBookingResponse updateStatus(Long id, BookingStatus status) {
         Booking booking = bookingRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+        BookingStatus previousStatus = booking.getStatus();
         booking.setStatus(status);
-        return toAdminResponse(booking);
+        AdminBookingResponse response = toAdminResponse(booking);
+
+        if (previousStatus != status) {
+            notificationService.bookingStatusChanged(response, previousStatus);
+        }
+
+        return response;
     }
 
     private BookingResponse toResponse(Booking b) {
