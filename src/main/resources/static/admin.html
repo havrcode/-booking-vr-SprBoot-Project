@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtum Booking Admin</title>
+  <link rel="stylesheet" href="/admin/admin.css">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Virtum VR</p>
+        <h1>Бронювання</h1>
+      </div>
+      <form class="key-form" id="key-form">
+        <label for="api-key">Admin API key</label>
+        <div class="key-row">
+          <input id="api-key" name="apiKey" type="password" autocomplete="current-password">
+          <button type="submit">Зберегти</button>
+        </div>
+      </form>
+    </header>
+
+    <section class="toolbar" aria-label="Фільтри бронювань">
+      <label>
+        Від
+        <input id="from-date" type="date">
+      </label>
+      <label>
+        До
+        <input id="to-date" type="date">
+      </label>
+      <label>
+        Статус
+        <select id="status-filter">
+          <option value="">Всі</option>
+          <option value="CONFIRMED">Підтверджені</option>
+          <option value="CANCELLED">Скасовані</option>
+        </select>
+      </label>
+      <button id="refresh-button" type="button">Оновити</button>
+    </section>
+
+    <section class="summary" aria-label="Підсумок">
+      <div>
+        <span id="confirmed-count">0</span>
+        <p>Підтверджені</p>
+      </div>
+      <div>
+        <span id="cancelled-count">0</span>
+        <p>Скасовані</p>
+      </div>
+      <div>
+        <span id="total-count">0</span>
+        <p>Всього</p>
+      </div>
+    </section>
+
+    <section class="table-wrap" aria-label="Список бронювань">
+      <table>
+        <thead>
+          <tr>
+            <th>Дата</th>
+            <th>Час</th>
+            <th>Послуга</th>
+            <th>Клієнт</th>
+            <th>Контакти</th>
+            <th>Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="booking-rows">
+          <tr>
+            <td colspan="7" class="empty">Завантаження...</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <p class="message" id="message" role="status"></p>
+  </main>
+
+  <script src="/admin/admin.js" defer></script>
+</body>
+</html>
+

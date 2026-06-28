@@ -40,6 +40,8 @@ public class BookingService {
         LocalDateTime startsAt = request.startsAt();
         LocalDateTime endsAt = startsAt.plusMinutes(service.getDurationMinutes());
 
+        // Only confirmed bookings block the calendar. Cancelled bookings keep history,
+        // but their time slot can be booked again.
         if (!bookingRepository.findByStatusAndStartsAtLessThanAndEndsAtGreaterThan(
                 BookingStatus.CONFIRMED,
                 endsAt,
@@ -81,6 +83,8 @@ public class BookingService {
             throw new BadRequestException("Parameter 'to' must be on or after 'from'.");
         }
 
+        // The API accepts inclusive LocalDate filters. Repository queries use an exclusive
+        // upper LocalDateTime boundary, so "to=2026-05-20" includes that whole day.
         LocalDateTime startsFrom = effectiveFrom.atStartOfDay();
         LocalDateTime startsBefore = effectiveTo.plusDays(1).atStartOfDay();
 

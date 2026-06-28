@@ -10,6 +10,14 @@
 - CORS налаштовано через `app.cors.allowed-origins`.
 - Flyway міграції для схеми бази даних.
 - Production-профіль для PostgreSQL.
+- Admin API та проста адмін-сторінка для перегляду/скасування бронювань.
+
+## Документація
+Поглиблений опис структури проекту:
+
+```text
+docs/PROJECT_STRUCTURE.md
+```
 
 ## API
 ### `GET /api/v1/services`
@@ -147,7 +155,19 @@ CONFIRMED
 CANCELLED
 ```
 
+## Admin UI
+Проста адмін-сторінка доступна після запуску backend:
+
+```text
+http://localhost:8080/admin.html
+```
+
+У production:
+
+```text
+https://booking-api.virtum-vr.com.ua/admin.html
+```
+
 ## Наступний production крок
-- Додати UI адмін-панелі поверх Admin API.
 - Додати SMS/Telegram нотифікації.
 - Додати інтеграційні тести для PostgreSQL профілю.
