@@ -133,6 +133,7 @@ Spring Boot entry point.
 
 ```text
 config/
+├── AsyncConfig.java
 ├── AdminApiConfig.java
 ├── AdminApiKeyInterceptor.java
 ├── AdminProperties.java
@@ -696,6 +697,21 @@ Better future path:
 - add endpoints to create/update/deactivate services;
 - add tests and admin UI controls.
 
+### `AsyncConfig.java`
+
+Enables async execution for background tasks.
+
+Currently used for booking notifications:
+
+```text
+BookingService
+    -> BookingNotificationService
+        -> notificationTaskExecutor
+            -> TelegramBookingNotifier
+```
+
+This keeps the booking API responsive even when Telegram is slow or temporarily unavailable.
+
 ## Development Flow
 
 Recommended Git flow:
@@ -743,6 +759,8 @@ notificationService.bookingStatusChanged(...)
 ```
 
 Важлива поведінка: якщо Telegram недоступний або повернув помилку, бронювання не ламається. Помилка логується, але користувач все одно отримує створене бронювання.
+
+Notification methods are asynchronous. Booking creation returns without waiting for Telegram delivery.
 
 ### `TelegramBookingNotifier.java`
 

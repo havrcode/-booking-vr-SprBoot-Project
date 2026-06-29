@@ -2,6 +2,7 @@ package ua.com.virtum.booking.notification;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import ua.com.virtum.booking.dto.AdminBookingResponse;
 import ua.com.virtum.booking.entity.BookingStatus;
@@ -18,6 +19,7 @@ public class BookingNotificationService {
         this.notifiers = notifiers;
     }
 
+    @Async("notificationTaskExecutor")
     public void bookingCreated(AdminBookingResponse booking) {
         for (BookingNotifier notifier : notifiers) {
             try {
@@ -30,6 +32,7 @@ public class BookingNotificationService {
         }
     }
 
+    @Async("notificationTaskExecutor")
     public void bookingStatusChanged(AdminBookingResponse booking, BookingStatus previousStatus) {
         for (BookingNotifier notifier : notifiers) {
             try {
@@ -40,4 +43,3 @@ public class BookingNotificationService {
         }
     }
 }
-
