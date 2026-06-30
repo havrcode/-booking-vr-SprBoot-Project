@@ -13,9 +13,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -128,5 +130,61 @@ class BookingApiIntegrationTests {
                         .content(payload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    @Test
+    void adminCanCreateUpdateAndDeactivateVrService() throws Exception {
+        String createPayload = """
+                {
+                  "slug": "admin-managed-120",
+                  "title": "Admin Managed 120 min",
+                  "durationMinutes": 120,
+                  "price": 2200.00,
+                  "active": true
+                }
+                """;
+
+        mockMvc.perform(get("/api/v1/admin/services"))
+                .andExpect(status().isUnauthorized());
+
+        MvcResult created = mockMvc.perform(post("/api/v1/admin/services")
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.slug").value("admin-managed-120"))
+                .andExpect(jsonPath("$.active").value(true))
+                .andReturn();
+        Integer serviceId = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(post("/api/v1/admin/services")
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(createPayload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+
+        String updatePayload = """
+                {
+                  "slug": "admin-managed-120",
+                  "title": "Admin Managed 75 min",
+                  "durationMinutes": 75,
+                  "price": 1500.00,
+                  "active": false
+                }
+                """;
+
+        mockMvc.perform(put("/api/v1/admin/services/{id}", serviceId)
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updatePayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Admin Managed 75 min"))
+                .andExpect(jsonPath("$.durationMinutes").value(75))
+                .andExpect(jsonPath("$.active").value(false));
+
+        mockMvc.perform(get("/api/v1/services"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.slug == 'admin-managed-120')]", hasSize(0)));
     }
 }

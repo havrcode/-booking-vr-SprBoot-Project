@@ -11,7 +11,7 @@
     <header class="topbar">
       <div>
         <p class="eyebrow">Virtum VR</p>
-        <h1>Бронювання</h1>
+        <h1>Адмінка</h1>
       </div>
       <form class="key-form" id="key-form">
         <label for="api-key">Admin API key</label>
@@ -22,60 +22,119 @@
       </form>
     </header>
 
-    <section class="toolbar" aria-label="Фільтри бронювань">
-      <label>
-        Від
-        <input id="from-date" type="date">
-      </label>
-      <label>
-        До
-        <input id="to-date" type="date">
-      </label>
-      <label>
-        Статус
-        <select id="status-filter">
-          <option value="">Всі</option>
-          <option value="CONFIRMED">Підтверджені</option>
-          <option value="CANCELLED">Скасовані</option>
-        </select>
-      </label>
-      <button id="refresh-button" type="button">Оновити</button>
+    <nav class="tabs" aria-label="Admin sections">
+      <button class="tab-button active" id="booking-tab" type="button" aria-selected="true">Бронювання</button>
+      <button class="tab-button" id="services-tab" type="button" aria-selected="false">Послуги</button>
+    </nav>
+
+    <section class="view" id="bookings-view">
+      <section class="toolbar" aria-label="Фільтри бронювань">
+        <label>
+          Від
+          <input id="from-date" type="date">
+        </label>
+        <label>
+          До
+          <input id="to-date" type="date">
+        </label>
+        <label>
+          Статус
+          <select id="status-filter">
+            <option value="">Всі</option>
+            <option value="CONFIRMED">Підтверджені</option>
+            <option value="CANCELLED">Скасовані</option>
+          </select>
+        </label>
+        <button id="refresh-button" type="button">Оновити</button>
+      </section>
+
+      <section class="summary" aria-label="Підсумок">
+        <div>
+          <span id="confirmed-count">0</span>
+          <p>Підтверджені</p>
+        </div>
+        <div>
+          <span id="cancelled-count">0</span>
+          <p>Скасовані</p>
+        </div>
+        <div>
+          <span id="total-count">0</span>
+          <p>Всього</p>
+        </div>
+      </section>
+
+      <section class="table-wrap" aria-label="Список бронювань">
+        <table>
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Час</th>
+              <th>Послуга</th>
+              <th>Клієнт</th>
+              <th>Контакти</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="booking-rows">
+            <tr>
+              <td colspan="7" class="empty">Завантаження...</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     </section>
 
-    <section class="summary" aria-label="Підсумок">
-      <div>
-        <span id="confirmed-count">0</span>
-        <p>Підтверджені</p>
-      </div>
-      <div>
-        <span id="cancelled-count">0</span>
-        <p>Скасовані</p>
-      </div>
-      <div>
-        <span id="total-count">0</span>
-        <p>Всього</p>
-      </div>
-    </section>
+    <section class="view" id="services-view" hidden>
+      <form class="service-form" id="service-form">
+        <input id="service-id" type="hidden">
+        <div class="form-grid">
+          <label>
+            Slug
+            <input id="service-slug" type="text" inputmode="latin" autocomplete="off" required maxlength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*">
+          </label>
+          <label>
+            Назва
+            <input id="service-title" type="text" required maxlength="255">
+          </label>
+          <label>
+            Тривалість, хв
+            <input id="service-duration" type="number" required min="15" max="480" step="5">
+          </label>
+          <label>
+            Ціна, грн
+            <input id="service-price" type="number" required min="1" step="0.01">
+          </label>
+          <label class="checkbox-label">
+            <input id="service-active" type="checkbox" checked>
+            Активна
+          </label>
+        </div>
+        <div class="form-actions">
+          <button id="service-submit-button" type="submit">Створити</button>
+          <button class="secondary-button" id="service-reset-button" type="button">Очистити</button>
+        </div>
+      </form>
 
-    <section class="table-wrap" aria-label="Список бронювань">
-      <table>
-        <thead>
-          <tr>
-            <th>Дата</th>
-            <th>Час</th>
-            <th>Послуга</th>
-            <th>Клієнт</th>
-            <th>Контакти</th>
-            <th>Статус</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody id="booking-rows">
-          <tr>
-            <td colspan="7" class="empty">Завантаження...</td>
-          </tr>
-        </tbody>
-      </table>
+      <section class="table-wrap" aria-label="Список послуг">
+        <table class="services-table">
+          <thead>
+            <tr>
+              <th>Послуга</th>
+              <th>Slug</th>
+              <th>Тривалість</th>
+              <th>Ціна</th>
+              <th>Статус</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="service-rows">
+            <tr>
+              <td colspan="6" class="empty">Завантаження...</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
     </section>
 
     <p class="message" id="message" role="status"></p>
@@ -84,4 +143,3 @@
   <script src="/admin/admin.js" defer></script>
 </body>
 </html>
-

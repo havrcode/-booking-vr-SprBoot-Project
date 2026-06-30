@@ -104,6 +104,37 @@ h1 {
   gap: 8px;
 }
 
+.tabs {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 4px;
+  margin-bottom: 16px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+}
+
+.tab-button {
+  background: transparent;
+  color: var(--muted);
+}
+
+.tab-button:hover,
+.tab-button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.view {
+  display: grid;
+  gap: 16px;
+}
+
+.view[hidden] {
+  display: none;
+}
+
 .toolbar {
   display: grid;
   grid-template-columns: repeat(3, minmax(150px, 1fr)) auto;
@@ -116,11 +147,65 @@ h1 {
   box-shadow: var(--shadow);
 }
 
+.service-form {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.5fr 0.8fr 0.8fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.service-form label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.checkbox-label {
+  min-height: 40px;
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: start;
+  padding-bottom: 1px;
+}
+
+.checkbox-label input {
+  width: 18px;
+  min-height: 18px;
+}
+
+.form-actions,
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+.secondary-button:hover {
+  background: #eef2ee;
+}
+
 .summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
-  margin: 16px 0;
 }
 
 .summary div {
@@ -157,6 +242,10 @@ table {
   border-collapse: collapse;
 }
 
+.services-table {
+  min-width: 780px;
+}
+
 th,
 td {
   padding: 14px 16px;
@@ -176,10 +265,20 @@ tbody tr:last-child td {
   border-bottom: 0;
 }
 
+.inactive-row {
+  background: #fafafa;
+}
+
 .client,
 .contact {
   display: grid;
   gap: 4px;
+}
+
+code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 .secondary {
@@ -236,12 +335,16 @@ tbody tr:last-child td {
 
   .topbar,
   .toolbar,
-  .summary {
+  .summary,
+  .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .tabs {
+    width: 100%;
   }
 
   h1 {
     font-size: 30px;
   }
 }
-
