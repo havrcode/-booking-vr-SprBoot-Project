@@ -1,0 +1,179 @@
+.virtum-booking-locked {
+  overflow: hidden;
+}
+
+.virtum-booking-widget,
+.virtum-booking-widget * {
+  box-sizing: border-box;
+}
+
+.virtum-booking-widget[hidden] {
+  display: none;
+}
+
+.virtum-booking-widget {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  color: #f4fbff;
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+.virtum-booking-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(7px);
+}
+
+.virtum-booking-dialog {
+  position: relative;
+  width: min(920px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  margin: 16px auto;
+  overflow: auto;
+  border: 2px solid rgba(102, 238, 255, 0.65);
+  border-radius: 8px;
+  background: #080b16;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.virtum-booking-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px;
+  border-bottom: 1px solid rgba(102, 238, 255, 0.24);
+  background: #10142a;
+}
+
+.virtum-booking-header p {
+  margin: 0 0 8px;
+  color: #70f1ff;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.virtum-booking-header h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 30px;
+  line-height: 1.12;
+}
+
+.virtum-booking-close {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 6px;
+  background: #181d33;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 18px;
+}
+
+.virtum-booking-form {
+  display: grid;
+  gap: 18px;
+  padding: 24px;
+}
+
+.virtum-booking-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.virtum-booking-form label {
+  display: grid;
+  gap: 8px;
+  color: #b9c8d9;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.virtum-booking-form input,
+.virtum-booking-form select {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid rgba(102, 238, 255, 0.32);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: #0f1428;
+  color: #ffffff;
+  font: inherit;
+}
+
+.virtum-booking-form input:focus,
+.virtum-booking-form select:focus,
+.virtum-booking-close:focus,
+.virtum-booking-submit:focus {
+  outline: 2px solid #ffdd45;
+  outline-offset: 2px;
+}
+
+.virtum-booking-note {
+  margin: 0;
+  color: #91a2b6;
+  font-size: 14px;
+}
+
+.virtum-booking-actions {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.virtum-booking-submit {
+  min-height: 48px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 22px;
+  background: #ffdd45;
+  color: #14100a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 900;
+}
+
+.virtum-booking-submit:hover {
+  background: #ffe977;
+}
+
+.virtum-booking-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.virtum-booking-message {
+  min-height: 22px;
+  margin: 0;
+  color: #70f1ff;
+  font-size: 14px;
+}
+
+@media (max-width: 760px) {
+  .virtum-booking-dialog {
+    width: min(100vw - 20px, 920px);
+    max-height: calc(100vh - 20px);
+    margin: 10px auto;
+  }
+
+  .virtum-booking-header,
+  .virtum-booking-form {
+    padding: 18px;
+  }
+
+  .virtum-booking-header h2 {
+    font-size: 24px;
+  }
+
+  .virtum-booking-grid,
+  .virtum-booking-actions {
+    grid-template-columns: 1fr;
+  }
+}

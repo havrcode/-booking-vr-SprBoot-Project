@@ -43,6 +43,14 @@ class BookingApiIntegrationTests {
     }
 
     @Test
+    void servesPublicBookingWidgetAssets() throws Exception {
+        mockMvc.perform(get("/widget/booking-widget.css"))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/widget/booking-widget.js"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void createsBookingAndRejectsOverlappingSlot() throws Exception {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(7)

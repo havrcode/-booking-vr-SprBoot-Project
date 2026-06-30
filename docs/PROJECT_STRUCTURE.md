@@ -89,10 +89,12 @@ deploy/
 docs/
 ├── PROJECT_STRUCTURE.md
 └── frontend/
+    ├── booking-widget-install.md
     └── virtum-booking-api.js
 ```
 
 - `PROJECT_STRUCTURE.md` - цей файл.
+- `frontend/booking-widget-install.md` - інструкція для підключення modal-віджета до існуючого сайту.
 - `frontend/virtum-booking-api.js` - готовий JS-клієнт для інтеграції форми на сайті `virtum-vr.com.ua`.
 
 ## Source Tree
@@ -647,9 +649,12 @@ Static files served by Spring Boot.
 ```text
 static/
 ├── admin.html
-└── admin/
+├── admin/
     ├── admin.css
     └── admin.js
+└── widget/
+    ├── booking-widget.css
+    └── booking-widget.js
 ```
 
 Admin page URL:
@@ -675,6 +680,21 @@ Admin UI має дві вкладки:
 - бронювання з фільтрами та скасуванням;
 - послуги зі створенням, редагуванням і перемикачем active.
 
+Public booking widget URL після deployment:
+
+```text
+https://booking-api.virtum-vr.com.ua/widget/booking-widget.css
+https://booking-api.virtum-vr.com.ua/widget/booking-widget.js
+```
+
+Widget підключається до кнопки на існуючому сайті через:
+
+```html
+data-virtum-booking-open
+```
+
+Він не використовує Admin API key. Публічна частина викликає тільки `/api/v1/services`, `/api/v1/bookings?date=...` і `POST /api/v1/bookings`.
+
 ## Tests
 
 ```text
@@ -698,7 +718,8 @@ Covers:
 - admin list with valid key;
 - cancellation;
 - re-booking a cancelled slot;
-- admin service create/update/deactivate flow.
+- admin service create/update/deactivate flow;
+- static admin page and booking widget assets.
 
 ### `PostgresProfileIntegrationTests.java`
 
