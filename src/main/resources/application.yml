@@ -27,3 +27,8 @@ app:
       - http://localhost:5173
   integration:
     widget-script: "https://virtum-vr.com.ua/widget/booking.js"
+  notifications:
+    telegram:
+      enabled: false
+      bot-token:
+      chat-id:

@@ -116,6 +116,7 @@ ua.com.virtum.booking
 ├── dto/
 ├── entity/
 ├── exception/
+├── notification/
 ├── repository/
 └── service/
 ```
@@ -132,6 +133,7 @@ Spring Boot entry point.
 
 ```text
 config/
+├── AsyncConfig.java
 ├── AdminApiConfig.java
 ├── AdminApiKeyInterceptor.java
 ├── AdminProperties.java
@@ -695,6 +697,21 @@ Better future path:
 - add endpoints to create/update/deactivate services;
 - add tests and admin UI controls.
 
+### `AsyncConfig.java`
+
+Enables async execution for background tasks.
+
+Currently used for booking notifications:
+
+```text
+BookingService
+    -> BookingNotificationService
+        -> notificationTaskExecutor
+            -> TelegramBookingNotifier
+```
+
+This keeps the booking API responsive even when Telegram is slow or temporarily unavailable.
+
 ## Development Flow
 
 Recommended Git flow:
@@ -708,3 +725,85 @@ Recommended Git flow:
 
 This keeps every development step understandable and reversible.
 
+## `notification/`
+
+Пакет для зовнішніх повідомлень.
+
+```text
+notification/
+├── BookingNotificationService.java
+├── BookingNotifier.java
+└── TelegramBookingNotifier.java
+```
+
+### `BookingNotifier.java`
+
+Інтерфейс каналу нотифікацій.
+
+Зараз є Telegram, але цей інтерфейс дозволяє потім додати:
+
+- SMS;
+- email;
+- Viber;
+- внутрішній CRM webhook.
+
+### `BookingNotificationService.java`
+
+Оркестратор нотифікацій.
+
+`BookingService` не знає деталей Telegram API. Він просто викликає:
+
+```java
+notificationService.bookingCreated(...)
+notificationService.bookingStatusChanged(...)
+```
+
+Важлива поведінка: якщо Telegram недоступний або повернув помилку, бронювання не ламається. Помилка логується, але користувач все одно отримує створене бронювання.
+
+Notification methods are asynchronous. Booking creation returns without waiting for Telegram delivery.
+
+### `TelegramBookingNotifier.java`
+
+Реалізація відправки повідомлень у Telegram Bot API.
+
+Вмикається тільки якщо задані всі параметри:
+
+```text
+TELEGRAM_NOTIFICATIONS_ENABLED=true
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
+```
+
+Повідомлення відправляються при:
+
+- створенні бронювання;
+- зміні статусу бронювання.
+
+## Notification Configuration
+
+Local default:
+
+```yaml
+app:
+  notifications:
+    telegram:
+      enabled: false
+```
+
+Production:
+
+```yaml
+app:
+  notifications:
+    telegram:
+      enabled: ${TELEGRAM_NOTIFICATIONS_ENABLED:false}
+      bot-token: ${TELEGRAM_BOT_TOKEN:}
+      chat-id: ${TELEGRAM_CHAT_ID:}
+```
+
+Для отримання `TELEGRAM_CHAT_ID` найпростіший практичний шлях:
+
+1. Створити bot через BotFather.
+2. Написати повідомлення боту.
+3. Отримати chat id через Telegram Bot API `getUpdates`.
+4. Записати значення у `.env`.
