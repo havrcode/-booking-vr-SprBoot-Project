@@ -8,5 +8,8 @@ import java.util.Optional;
 
 public interface VrServiceRepository extends JpaRepository<VrService, Long> {
     List<VrService> findByActiveTrueOrderByTitleAsc();
+    List<VrService> findAllByOrderByActiveDescTitleAsc();
     Optional<VrService> findBySlugAndActiveTrue(String slug);
+    boolean existsBySlug(String slug);
+    boolean existsBySlugAndIdNot(String slug, Long id);
 }

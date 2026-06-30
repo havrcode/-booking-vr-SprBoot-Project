@@ -3,8 +3,10 @@ package ua.com.virtum.booking.service;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ua.com.virtum.booking.dto.AdminBookingResponse;
+import ua.com.virtum.booking.dto.AdminVrServiceResponse;
 import ua.com.virtum.booking.dto.BookingResponse;
 import ua.com.virtum.booking.dto.CreateBookingRequest;
+import ua.com.virtum.booking.dto.SaveVrServiceRequest;
 import ua.com.virtum.booking.entity.Booking;
 import ua.com.virtum.booking.entity.BookingStatus;
 import ua.com.virtum.booking.entity.VrService;
@@ -18,6 +20,7 @@ import ua.com.virtum.booking.repository.VrServiceRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 public class BookingService {
@@ -37,6 +40,40 @@ public class BookingService {
 
     public List<VrService> listServices() {
         return vrServiceRepository.findByActiveTrueOrderByTitleAsc();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminVrServiceResponse> listAdminServices() {
+        return vrServiceRepository.findAllByOrderByActiveDescTitleAsc().stream()
+                .map(this::toAdminServiceResponse)
+                .toList();
+    }
+
+    @Transactional
+    public AdminVrServiceResponse createService(SaveVrServiceRequest request) {
+        String slug = normalizeSlug(request.slug());
+
+        if (vrServiceRepository.existsBySlug(slug)) {
+            throw new ConflictException("Service slug already exists: " + slug);
+        }
+
+        VrService service = new VrService();
+        applyServiceRequest(service, request, slug);
+        return toAdminServiceResponse(vrServiceRepository.save(service));
+    }
+
+    @Transactional
+    public AdminVrServiceResponse updateService(Long id, SaveVrServiceRequest request) {
+        VrService service = vrServiceRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Service not found: " + id));
+        String slug = normalizeSlug(request.slug());
+
+        if (vrServiceRepository.existsBySlugAndIdNot(slug, id)) {
+            throw new ConflictException("Service slug already exists: " + slug);
+        }
+
+        applyServiceRequest(service, request, slug);
+        return toAdminServiceResponse(service);
     }
 
     @Transactional
@@ -126,6 +163,30 @@ public class BookingService {
         }
 
         return response;
+    }
+
+    private void applyServiceRequest(VrService service, SaveVrServiceRequest request, String slug) {
+        service.setSlug(slug);
+        service.setTitle(request.title().trim());
+        service.setDurationMinutes(request.durationMinutes());
+        service.setPrice(request.price());
+        // Inactive services stay available for old bookings but disappear from the public site.
+        service.setActive(request.active());
+    }
+
+    private String normalizeSlug(String slug) {
+        return slug.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private AdminVrServiceResponse toAdminServiceResponse(VrService service) {
+        return new AdminVrServiceResponse(
+                service.getId(),
+                service.getSlug(),
+                service.getTitle(),
+                service.getDurationMinutes(),
+                service.getPrice(),
+                service.isActive()
+        );
     }
 
     private BookingResponse toResponse(Booking b) {
