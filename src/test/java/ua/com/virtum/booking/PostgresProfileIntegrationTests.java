@@ -32,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PostgresProfileIntegrationTests {
     private static final String ADMIN_API_KEY = "postgres-test-admin-key";
 
+    // Testcontainers starts this PostgreSQL database only when Docker is available.
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
             .withDatabaseName("virtum_booking_test")
@@ -43,6 +44,7 @@ class PostgresProfileIntegrationTests {
 
     @DynamicPropertySource
     static void postgresProperties(DynamicPropertyRegistry registry) {
+        // Keep the prod profile active, but point it to the disposable test database.
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
@@ -56,6 +58,7 @@ class PostgresProfileIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()", greaterThan(0)));
 
+        // Use a future slot so the test stays valid no matter when the suite runs.
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(14)
                 .withHour(12)
@@ -98,4 +101,3 @@ class PostgresProfileIntegrationTests {
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
 }
-
