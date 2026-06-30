@@ -54,6 +54,20 @@ JDBC URL:
 jdbc:h2:mem:bookingdb
 ```
 
+## Тести
+Звичайний test suite:
+
+```bash
+mvn test
+```
+
+Проект має два рівні integration tests:
+
+- H2 tests для швидкої локальної перевірки;
+- PostgreSQL profile test через Testcontainers.
+
+PostgreSQL test піднімає `postgres:16-alpine`, проганяє Flyway migrations і перевіряє booking/admin flow. Якщо Docker недоступний, цей test class пропускається.
+
 ## Production запуск з PostgreSQL
 1. Скопіювати `.env.example` у `.env` і задати реальний `DB_PASSWORD`.
 2. Підняти PostgreSQL:
@@ -188,4 +202,4 @@ TELEGRAM_CHAT_ID=<chat-or-user-id>
 ```
 
 ## Наступний production крок
-- Додати інтеграційні тести для PostgreSQL профілю.
+- Додати керування VR-послугами з адмінки.
