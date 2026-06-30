@@ -588,7 +588,10 @@ X-Admin-Api-Key
 ```text
 src/test/java/ua/com/virtum/booking/
 ├── BookingApiIntegrationTests.java
-└── BookingVrApplicationTests.java
+├── BookingVrApplicationTests.java
+├── PostgresProfileIntegrationTests.java
+└── notification/
+    └── BookingNotificationServiceTests.java
 ```
 
 ### `BookingApiIntegrationTests.java`
@@ -604,9 +607,44 @@ Covers:
 - cancellation;
 - re-booking a cancelled slot.
 
+### `PostgresProfileIntegrationTests.java`
+
+Runs the production database profile against a real PostgreSQL container.
+
+It verifies:
+
+- `application-prod.yml` can boot with PostgreSQL settings;
+- Flyway migrations apply to PostgreSQL;
+- seeded services are available;
+- booking creation works;
+- admin booking list works;
+- status update works.
+
+The test uses Testcontainers:
+
+```text
+postgres:16-alpine
+```
+
+If Docker is unavailable, the class is skipped via:
+
+```java
+@Testcontainers(disabledWithoutDocker = true)
+```
+
 ### `BookingVrApplicationTests.java`
 
 Basic Spring context load test.
+
+### `notification/BookingNotificationServiceTests.java`
+
+Checks Telegram notification behavior without calling the real Telegram API.
+
+It verifies:
+
+- disabled notifications do nothing;
+- enabled notifications call the configured Telegram endpoint;
+- Telegram failures are logged and do not break booking creation.
 
 ## Configuration Cheat Sheet
 
@@ -633,6 +671,9 @@ DB_NAME=virtum_booking
 DB_USER=virtum_booking
 DB_PASSWORD=...
 ADMIN_API_KEY=...
+TELEGRAM_NOTIFICATIONS_ENABLED=false
+TELEGRAM_BOT_TOKEN=...
+TELEGRAM_CHAT_ID=...
 ```
 
 ## What To Change For Common Tasks
