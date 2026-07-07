@@ -110,6 +110,19 @@ fetch('https://booking-api.virtum-vr.com.ua/api/v1/services')
 docs/frontend/virtum-booking-api.js
 ```
 
+Готовий drop-in widget для кнопки `Забронювати` описаний тут:
+
+```text
+docs/frontend/booking-widget-install.md
+```
+
+Після deployment backend буде віддавати widget assets:
+
+```text
+https://booking-api.virtum-vr.com.ua/widget/booking-widget.css
+https://booking-api.virtum-vr.com.ua/widget/booking-widget.js
+```
+
 Очікувані імена полів HTML-форми:
 
 ```text
