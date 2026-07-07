@@ -25,6 +25,7 @@
     <nav class="tabs" aria-label="Admin sections">
       <button class="tab-button active" id="booking-tab" type="button" aria-selected="true">Бронювання</button>
       <button class="tab-button" id="services-tab" type="button" aria-selected="false">Послуги</button>
+      <button class="tab-button" id="availability-tab" type="button" aria-selected="false">Доступність</button>
     </nav>
 
     <section class="view" id="bookings-view">
@@ -131,6 +132,59 @@
           <tbody id="service-rows">
             <tr>
               <td colspan="6" class="empty">Завантаження...</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </section>
+
+    <section class="view" id="availability-view" hidden>
+      <form class="availability-form" id="availability-form">
+        <div class="form-grid availability-grid">
+          <label>
+            Початок
+            <input id="availability-starts-at" type="datetime-local" required>
+          </label>
+          <label>
+            Кінець
+            <input id="availability-ends-at" type="datetime-local" required>
+          </label>
+          <label>
+            Причина
+            <input id="availability-reason" type="text" maxlength="255" placeholder="Технічна пауза, приватна подія...">
+          </label>
+        </div>
+        <div class="form-actions">
+          <button id="availability-submit-button" type="submit">Закрити час</button>
+        </div>
+      </form>
+
+      <section class="toolbar" aria-label="Фільтри доступності">
+        <label>
+          Від
+          <input id="availability-from-date" type="date">
+        </label>
+        <label>
+          До
+          <input id="availability-to-date" type="date">
+        </label>
+        <button id="availability-refresh-button" type="button">Оновити</button>
+      </section>
+
+      <section class="table-wrap" aria-label="Закриті слоти">
+        <table>
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Час</th>
+              <th>Причина</th>
+              <th>Створено</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="availability-rows">
+            <tr>
+              <td colspan="5" class="empty">Завантаження...</td>
             </tr>
           </tbody>
         </table>

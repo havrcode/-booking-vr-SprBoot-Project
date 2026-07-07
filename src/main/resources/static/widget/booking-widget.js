@@ -17,6 +17,7 @@
   config.apiBase = normalizeApiBase(config.apiBase || inferApiBase(script));
 
   const state = {
+    availabilityBlocks: [],
     bookings: [],
     services: [],
     selectedService: null,
@@ -220,6 +221,7 @@
     const date = dateInput.value;
 
     if (!date) {
+      state.availabilityBlocks = [];
       state.bookings = [];
       renderTimeSlots();
       return;
@@ -229,9 +231,16 @@
     timeSelect.innerHTML = '<option value="">Завантаження...</option>';
 
     try {
-      state.bookings = await request(`/api/v1/bookings?date=${encodeURIComponent(date)}`);
+      const [bookings, availabilityBlocks] = await Promise.all([
+        request(`/api/v1/bookings?date=${encodeURIComponent(date)}`),
+        request(`/api/v1/availability-blocks?date=${encodeURIComponent(date)}`),
+      ]);
+
+      state.bookings = bookings;
+      state.availabilityBlocks = availabilityBlocks;
       renderTimeSlots();
     } catch (error) {
+      state.availabilityBlocks = [];
       state.bookings = [];
       renderTimeSlots();
       setMessage(error.message);
@@ -282,10 +291,11 @@
       const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
       const past = startsAt <= today;
       const booked = overlapsBooking(startsAt, endsAt);
+      const closed = overlapsAvailabilityBlock(startsAt, endsAt);
 
       slots.push({
-        disabled: past || booked,
-        disabledReason: past ? " - недоступно" : booked ? " - зайнято" : "",
+        disabled: past || booked || closed,
+        disabledReason: past ? " - недоступно" : booked ? " - зайнято" : closed ? " - закрито" : "",
         label: `${time} - ${minutesToTime(minute + durationMinutes)}`,
         value: time,
       });
@@ -299,6 +309,14 @@
       const bookingStart = new Date(booking.startsAt);
       const bookingEnd = new Date(booking.endsAt);
       return bookingStart < endsAt && bookingEnd > startsAt;
+    });
+  }
+
+  function overlapsAvailabilityBlock(startsAt, endsAt) {
+    return state.availabilityBlocks.some((block) => {
+      const blockStart = new Date(block.startsAt);
+      const blockEnd = new Date(block.endsAt);
+      return blockStart < endsAt && blockEnd > startsAt;
     });
   }
 
@@ -367,6 +385,12 @@
 
   function errorMessage(status, body) {
     if (status === 409) {
+      const serverError = body && typeof body === "object" && body.error ? String(body.error) : "";
+
+      if (serverError.toLowerCase().includes("closed")) {
+        return "Цей час закритий адміністратором. Оберіть інший слот.";
+      }
+
       return "Цей час вже зайнятий. Оберіть інший слот.";
     }
 

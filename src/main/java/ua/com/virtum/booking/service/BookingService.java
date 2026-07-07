@@ -4,9 +4,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ua.com.virtum.booking.dto.AdminBookingResponse;
 import ua.com.virtum.booking.dto.AdminVrServiceResponse;
+import ua.com.virtum.booking.dto.AvailabilityBlockResponse;
 import ua.com.virtum.booking.dto.BookingResponse;
 import ua.com.virtum.booking.dto.CreateBookingRequest;
+import ua.com.virtum.booking.dto.SaveAvailabilityBlockRequest;
 import ua.com.virtum.booking.dto.SaveVrServiceRequest;
+import ua.com.virtum.booking.entity.AvailabilityBlock;
 import ua.com.virtum.booking.entity.Booking;
 import ua.com.virtum.booking.entity.BookingStatus;
 import ua.com.virtum.booking.entity.VrService;
@@ -14,6 +17,7 @@ import ua.com.virtum.booking.exception.BadRequestException;
 import ua.com.virtum.booking.exception.ConflictException;
 import ua.com.virtum.booking.exception.NotFoundException;
 import ua.com.virtum.booking.notification.BookingNotificationService;
+import ua.com.virtum.booking.repository.AvailabilityBlockRepository;
 import ua.com.virtum.booking.repository.BookingRepository;
 import ua.com.virtum.booking.repository.VrServiceRepository;
 
@@ -26,15 +30,18 @@ import java.util.Locale;
 public class BookingService {
     private final BookingRepository bookingRepository;
     private final VrServiceRepository vrServiceRepository;
+    private final AvailabilityBlockRepository availabilityBlockRepository;
     private final BookingNotificationService notificationService;
 
     public BookingService(
             BookingRepository bookingRepository,
             VrServiceRepository vrServiceRepository,
+            AvailabilityBlockRepository availabilityBlockRepository,
             BookingNotificationService notificationService
     ) {
         this.bookingRepository = bookingRepository;
         this.vrServiceRepository = vrServiceRepository;
+        this.availabilityBlockRepository = availabilityBlockRepository;
         this.notificationService = notificationService;
     }
 
@@ -94,6 +101,13 @@ public class BookingService {
             throw new ConflictException("This time slot is already booked. Please choose another one.");
         }
 
+        if (!availabilityBlockRepository.findByStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(
+                endsAt,
+                startsAt
+        ).isEmpty()) {
+            throw new ConflictException("This time slot is closed by administrator. Please choose another one.");
+        }
+
         Booking booking = new Booking();
         booking.setService(service);
         booking.setCustomerName(request.customerName());
@@ -150,6 +164,56 @@ public class BookingService {
                 .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<AvailabilityBlockResponse> listDayAvailabilityBlocks(LocalDate day) {
+        LocalDateTime from = day.atStartOfDay();
+        LocalDateTime to = day.plusDays(1).atStartOfDay();
+        return availabilityBlockRepository.findByStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(to, from).stream()
+                .map(this::toPublicAvailabilityBlockResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AvailabilityBlockResponse> listAdminAvailabilityBlocks(LocalDate from, LocalDate to) {
+        LocalDate effectiveFrom = from == null ? LocalDate.now() : from;
+        LocalDate effectiveTo = to == null ? effectiveFrom.plusDays(30) : to;
+
+        if (effectiveTo.isBefore(effectiveFrom)) {
+            throw new BadRequestException("Parameter 'to' must be on or after 'from'.");
+        }
+
+        LocalDateTime startsFrom = effectiveFrom.atStartOfDay();
+        LocalDateTime startsBefore = effectiveTo.plusDays(1).atStartOfDay();
+
+        return availabilityBlockRepository
+                .findByStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(startsBefore, startsFrom)
+                .stream()
+                .map(this::toAvailabilityBlockResponse)
+                .toList();
+    }
+
+    @Transactional
+    public AvailabilityBlockResponse createAvailabilityBlock(SaveAvailabilityBlockRequest request) {
+        if (!request.endsAt().isAfter(request.startsAt())) {
+            throw new BadRequestException("Field 'endsAt' must be after 'startsAt'.");
+        }
+
+        AvailabilityBlock block = new AvailabilityBlock();
+        block.setStartsAt(request.startsAt());
+        block.setEndsAt(request.endsAt());
+        block.setReason(normalizeReason(request.reason()));
+        return toAvailabilityBlockResponse(availabilityBlockRepository.save(block));
+    }
+
+    @Transactional
+    public void deleteAvailabilityBlock(Long id) {
+        if (!availabilityBlockRepository.existsById(id)) {
+            throw new NotFoundException("Availability block not found: " + id);
+        }
+
+        availabilityBlockRepository.deleteById(id);
+    }
+
     @Transactional
     public AdminBookingResponse updateStatus(Long id, BookingStatus status) {
         Booking booking = bookingRepository.findById(id)
@@ -176,6 +240,14 @@ public class BookingService {
 
     private String normalizeSlug(String slug) {
         return slug.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizeReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            return "Закрито адміністратором";
+        }
+
+        return reason.trim();
     }
 
     private AdminVrServiceResponse toAdminServiceResponse(VrService service) {
@@ -219,6 +291,26 @@ public class BookingService {
                 b.getEndsAt(),
                 b.getStatus(),
                 b.getCreatedAt()
+        );
+    }
+
+    private AvailabilityBlockResponse toAvailabilityBlockResponse(AvailabilityBlock block) {
+        return new AvailabilityBlockResponse(
+                block.getId(),
+                block.getStartsAt(),
+                block.getEndsAt(),
+                block.getReason(),
+                block.getCreatedAt()
+        );
+    }
+
+    private AvailabilityBlockResponse toPublicAvailabilityBlockResponse(AvailabilityBlock block) {
+        return new AvailabilityBlockResponse(
+                block.getId(),
+                block.getStartsAt(),
+                block.getEndsAt(),
+                null,
+                null
         );
     }
 }

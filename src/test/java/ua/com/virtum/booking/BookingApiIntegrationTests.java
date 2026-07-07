@@ -15,6 +15,7 @@ import java.time.format.DateTimeFormatter;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -194,5 +195,69 @@ class BookingApiIntegrationTests {
         mockMvc.perform(get("/api/v1/services"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.slug == 'admin-managed-120')]", hasSize(0)));
+    }
+
+    @Test
+    void adminCanCloseAndReopenAvailabilitySlot() throws Exception {
+        LocalDateTime startsAt = LocalDateTime.now()
+                .plusDays(9)
+                .withHour(18)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+        LocalDateTime endsAt = startsAt.plusHours(1);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String endsAtValue = endsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String dateValue = startsAt.toLocalDate().toString();
+
+        String blockPayload = """
+                {
+                  "startsAt": "%s",
+                  "endsAt": "%s",
+                  "reason": "Private event"
+                }
+                """.formatted(startsAtValue, endsAtValue);
+
+        MvcResult createdBlock = mockMvc.perform(post("/api/v1/admin/availability-blocks")
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(blockPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.startsAt").value(startsAtValue))
+                .andExpect(jsonPath("$.reason").value("Private event"))
+                .andReturn();
+        Integer blockId = JsonPath.read(createdBlock.getResponse().getContentAsString(), "$.id");
+
+        mockMvc.perform(get("/api/v1/availability-blocks")
+                        .param("date", dateValue))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(blockId))
+                .andExpect(jsonPath("$[0].reason").doesNotExist());
+
+        String bookingPayload = """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Blocked Slot Customer",
+                  "customerPhone": "+380501234569",
+                  "customerEmail": "blocked@example.com",
+                  "startsAt": "%s"
+                }
+                """.formatted(startsAtValue);
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bookingPayload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+
+        mockMvc.perform(delete("/api/v1/admin/availability-blocks/{id}", blockId)
+                        .header("X-Admin-Api-Key", "dev-admin-key"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(bookingPayload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
     }
 }
