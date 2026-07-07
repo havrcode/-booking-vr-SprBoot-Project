@@ -2,8 +2,10 @@ const apiKeyInput = document.querySelector("#api-key");
 const keyForm = document.querySelector("#key-form");
 const bookingTab = document.querySelector("#booking-tab");
 const servicesTab = document.querySelector("#services-tab");
+const availabilityTab = document.querySelector("#availability-tab");
 const bookingsView = document.querySelector("#bookings-view");
 const servicesView = document.querySelector("#services-view");
+const availabilityView = document.querySelector("#availability-view");
 const fromDateInput = document.querySelector("#from-date");
 const toDateInput = document.querySelector("#to-date");
 const statusFilter = document.querySelector("#status-filter");
@@ -23,6 +25,15 @@ const serviceActiveInput = document.querySelector("#service-active");
 const serviceSubmitButton = document.querySelector("#service-submit-button");
 const serviceResetButton = document.querySelector("#service-reset-button");
 const serviceRows = document.querySelector("#service-rows");
+const availabilityForm = document.querySelector("#availability-form");
+const availabilityStartsAtInput = document.querySelector("#availability-starts-at");
+const availabilityEndsAtInput = document.querySelector("#availability-ends-at");
+const availabilityReasonInput = document.querySelector("#availability-reason");
+const availabilitySubmitButton = document.querySelector("#availability-submit-button");
+const availabilityFromDateInput = document.querySelector("#availability-from-date");
+const availabilityToDateInput = document.querySelector("#availability-to-date");
+const availabilityRefreshButton = document.querySelector("#availability-refresh-button");
+const availabilityRows = document.querySelector("#availability-rows");
 
 const API_KEY_STORAGE = "virtum.adminApiKey";
 
@@ -38,6 +49,9 @@ function init() {
 
   fromDateInput.value = toDateInputValue(today);
   toDateInput.value = toDateInputValue(nextWeek);
+  availabilityFromDateInput.value = toDateInputValue(today);
+  availabilityToDateInput.value = toDateInputValue(nextWeek);
+  resetAvailabilityForm();
   apiKeyInput.value = localStorage.getItem(API_KEY_STORAGE) || "";
 
   keyForm.addEventListener("submit", (event) => {
@@ -49,9 +63,12 @@ function init() {
 
   bookingTab.addEventListener("click", () => selectView("bookings"));
   servicesTab.addEventListener("click", () => selectView("services"));
+  availabilityTab.addEventListener("click", () => selectView("availability"));
   refreshButton.addEventListener("click", loadBookings);
   serviceForm.addEventListener("submit", saveService);
   serviceResetButton.addEventListener("click", resetServiceForm);
+  availabilityForm.addEventListener("submit", saveAvailabilityBlock);
+  availabilityRefreshButton.addEventListener("click", loadAvailabilityBlocks);
 
   loadBookings();
 }
@@ -59,24 +76,139 @@ function init() {
 function selectView(view) {
   activeView = view;
   const isBookings = view === "bookings";
+  const isServices = view === "services";
+  const isAvailability = view === "availability";
 
   bookingTab.classList.toggle("active", isBookings);
-  servicesTab.classList.toggle("active", !isBookings);
+  servicesTab.classList.toggle("active", isServices);
+  availabilityTab.classList.toggle("active", isAvailability);
   bookingTab.setAttribute("aria-selected", String(isBookings));
-  servicesTab.setAttribute("aria-selected", String(!isBookings));
+  servicesTab.setAttribute("aria-selected", String(isServices));
+  availabilityTab.setAttribute("aria-selected", String(isAvailability));
   bookingsView.hidden = !isBookings;
-  servicesView.hidden = isBookings;
+  servicesView.hidden = !isServices;
+  availabilityView.hidden = !isAvailability;
 
   loadActiveView();
 }
 
 function loadActiveView() {
+  if (activeView === "availability") {
+    loadAvailabilityBlocks();
+    return;
+  }
+
   if (activeView === "services") {
     loadServices();
     return;
   }
 
   loadBookings();
+}
+
+async function loadAvailabilityBlocks() {
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    renderAvailabilityRows([]);
+    setMessage("Додайте Admin API key.");
+    return;
+  }
+
+  availabilityRefreshButton.disabled = true;
+  availabilitySubmitButton.disabled = true;
+  setMessage("Завантаження...");
+
+  try {
+    const params = new URLSearchParams();
+    params.set("from", availabilityFromDateInput.value);
+    params.set("to", availabilityToDateInput.value);
+
+    const response = await fetch(`/api/v1/admin/availability-blocks?${params}`, {
+      headers: { "X-Admin-Api-Key": apiKey },
+    });
+    const body = await parseBody(response);
+
+    if (!response.ok) {
+      throw new Error(errorMessage(body, "Не вдалося завантажити закриті слоти."));
+    }
+
+    renderAvailabilityRows(body);
+    setMessage("");
+  } catch (error) {
+    renderAvailabilityRows([]);
+    setMessage(error.message);
+  } finally {
+    availabilityRefreshButton.disabled = false;
+    availabilitySubmitButton.disabled = false;
+  }
+}
+
+async function saveAvailabilityBlock(event) {
+  event.preventDefault();
+
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    setMessage("Додайте Admin API key.");
+    return;
+  }
+
+  availabilitySubmitButton.disabled = true;
+
+  try {
+    const response = await fetch("/api/v1/admin/availability-blocks", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Api-Key": apiKey,
+      },
+      body: JSON.stringify(availabilityPayload()),
+    });
+    const body = await parseBody(response);
+
+    if (!response.ok) {
+      throw new Error(errorMessage(body, "Не вдалося закрити цей час."));
+    }
+
+    resetAvailabilityForm();
+    await loadAvailabilityBlocks();
+    setMessage("Час закрито для бронювання.");
+  } catch (error) {
+    setMessage(error.message);
+  } finally {
+    availabilitySubmitButton.disabled = false;
+  }
+}
+
+async function deleteAvailabilityBlock(id) {
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    setMessage("Додайте Admin API key.");
+    return;
+  }
+
+  const button = document.querySelector(`[data-delete-availability-id="${id}"]`);
+  button.disabled = true;
+
+  try {
+    const response = await fetch(`/api/v1/admin/availability-blocks/${id}`, {
+      method: "DELETE",
+      headers: { "X-Admin-Api-Key": apiKey },
+    });
+    const body = await parseBody(response);
+
+    if (!response.ok) {
+      throw new Error(errorMessage(body, "Не вдалося відкрити цей час."));
+    }
+
+    await loadAvailabilityBlocks();
+    setMessage("Час знову доступний для бронювання.");
+  } catch (error) {
+    setMessage(error.message);
+    button.disabled = false;
+  }
 }
 
 async function loadBookings() {
@@ -295,6 +427,16 @@ function resetServiceForm() {
   serviceSubmitButton.textContent = "Створити";
 }
 
+function resetAvailabilityForm() {
+  const startsAt = roundToNextHalfHour(new Date());
+  const endsAt = new Date(startsAt);
+  endsAt.setHours(startsAt.getHours() + 1);
+
+  availabilityStartsAtInput.value = toDateTimeInputValue(startsAt);
+  availabilityEndsAtInput.value = toDateTimeInputValue(endsAt);
+  availabilityReasonInput.value = "";
+}
+
 function servicePayload() {
   return {
     slug: serviceSlugInput.value.trim().toLowerCase(),
@@ -302,6 +444,14 @@ function servicePayload() {
     durationMinutes: Number(serviceDurationInput.value),
     price: Number(servicePriceInput.value),
     active: serviceActiveInput.checked,
+  };
+}
+
+function availabilityPayload() {
+  return {
+    startsAt: normalizeDateTimeLocalValue(availabilityStartsAtInput.value),
+    endsAt: normalizeDateTimeLocalValue(availabilityEndsAtInput.value),
+    reason: availabilityReasonInput.value.trim(),
   };
 }
 
@@ -387,6 +537,35 @@ function renderServiceRows(items) {
   });
 }
 
+function renderAvailabilityRows(items) {
+  if (!items.length) {
+    availabilityRows.innerHTML = '<tr><td colspan="5" class="empty">Закритих слотів немає</td></tr>';
+    return;
+  }
+
+  availabilityRows.innerHTML = items.map((block) => {
+    const start = new Date(block.startsAt);
+    const end = new Date(block.endsAt);
+    const createdAt = new Date(block.createdAt);
+
+    return `
+      <tr>
+        <td>${formatDate(start)}</td>
+        <td>${formatTime(start)}-${formatTime(end)}</td>
+        <td>${escapeHtml(block.reason || "Закрито адміністратором")}</td>
+        <td>${formatDate(createdAt)} ${formatTime(createdAt)}</td>
+        <td>
+          <button class="secondary-button" data-delete-availability-id="${block.id}" type="button">Відкрити</button>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  availabilityRows.querySelectorAll("[data-delete-availability-id]").forEach((button) => {
+    button.addEventListener("click", () => deleteAvailabilityBlock(button.dataset.deleteAvailabilityId));
+  });
+}
+
 function updateSummary(bookings) {
   const confirmed = bookings.filter((booking) => booking.status === "CONFIRMED").length;
   const cancelled = bookings.filter((booking) => booking.status === "CANCELLED").length;
@@ -439,6 +618,28 @@ function errorMessage(body, fallback) {
 
 function toDateInputValue(date) {
   return date.toISOString().slice(0, 10);
+}
+
+function toDateTimeInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+function normalizeDateTimeLocalValue(value) {
+  return value.length === 16 ? `${value}:00` : value;
+}
+
+function roundToNextHalfHour(date) {
+  const rounded = new Date(date);
+  rounded.setSeconds(0, 0);
+  const minutes = rounded.getMinutes();
+  const minutesToAdd = minutes < 30 ? 30 - minutes : 60 - minutes;
+  rounded.setMinutes(minutes + minutesToAdd);
+  return rounded;
 }
 
 function formatDate(date) {
