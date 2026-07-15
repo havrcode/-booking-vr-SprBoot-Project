@@ -3,6 +3,10 @@ spring:
     url: jdbc:h2:mem:bookingdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE
     username: sa
     password:
+  servlet:
+    multipart:
+      max-file-size: ${PAYMENT_PROOF_MAX_FILE_SIZE:8MB}
+      max-request-size: ${PAYMENT_PROOF_MAX_FILE_SIZE:8MB}
   h2:
     console:
       enabled: true
@@ -17,6 +21,17 @@ server:
   port: 8080
 
 app:
+  booking:
+    max-concurrent-bookings: ${MAX_CONCURRENT_BOOKINGS:1}
+  payment:
+    pay-at-club-enabled: ${PAYMENT_PAY_AT_CLUB_ENABLED:true}
+    card-transfer-enabled: ${PAYMENT_CARD_TRANSFER_ENABLED:false}
+    card-holder: ${PAYMENT_CARD_HOLDER:}
+    card-number: ${PAYMENT_CARD_NUMBER:}
+    card-bank: ${PAYMENT_CARD_BANK:}
+    card-transfer-note: ${PAYMENT_CARD_TRANSFER_NOTE:Після переказу можна додати скрін підтвердження.}
+    proofs-dir: ${PAYMENT_PROOFS_DIR:data/payment-proofs}
+    max-proof-size-bytes: ${PAYMENT_PROOF_MAX_BYTES:8388608}
   admin:
     api-key: ${ADMIN_API_KEY:dev-admin-key}
   cors:

@@ -287,6 +287,81 @@ async function cancelBooking(id) {
   }
 }
 
+async function updatePaymentStatus(id, paymentStatus) {
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    setMessage("Додайте Admin API key.");
+    return;
+  }
+
+  const button = document.querySelector(`[data-payment-paid-id="${id}"]`);
+  if (button) {
+    button.disabled = true;
+  }
+
+  try {
+    const response = await fetch(`/api/v1/admin/bookings/${id}/payment-status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Api-Key": apiKey,
+      },
+      body: JSON.stringify({ paymentStatus }),
+    });
+
+    const body = await parseBody(response);
+
+    if (!response.ok) {
+      throw new Error(errorMessage(body, "Не вдалося оновити оплату."));
+    }
+
+    await loadBookings();
+    setMessage("Статус оплати оновлено.");
+  } catch (error) {
+    setMessage(error.message);
+    if (button) {
+      button.disabled = false;
+    }
+  }
+}
+
+async function openPaymentProof(id) {
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    setMessage("Додайте Admin API key.");
+    return;
+  }
+
+  const previewWindow = window.open("", "_blank");
+
+  try {
+    const response = await fetch(`/api/v1/admin/bookings/${id}/payment-proof`, {
+      headers: { "X-Admin-Api-Key": apiKey },
+    });
+
+    if (!response.ok) {
+      const body = await parseBody(response);
+      throw new Error(errorMessage(body, "Не вдалося відкрити скрін оплати."));
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+
+    if (previewWindow) {
+      previewWindow.location = url;
+    } else {
+      window.open(url, "_blank");
+    }
+  } catch (error) {
+    if (previewWindow) {
+      previewWindow.close();
+    }
+    setMessage(error.message);
+  }
+}
+
 async function loadServices() {
   const apiKey = getApiKey();
 
@@ -459,7 +534,7 @@ function renderRows(bookings) {
   updateSummary(bookings);
 
   if (!bookings.length) {
-    rows.innerHTML = '<tr><td colspan="7" class="empty">Бронювань немає</td></tr>';
+    rows.innerHTML = '<tr><td colspan="8" class="empty">Бронювань немає</td></tr>';
     return;
   }
 
@@ -467,6 +542,8 @@ function renderRows(bookings) {
     const start = new Date(booking.startsAt);
     const end = new Date(booking.endsAt);
     const isCancelled = booking.status === "CANCELLED";
+    const isPaid = booking.paymentStatus === "PAID";
+    const hasPaymentProof = booking.paymentProof && booking.paymentProof.uploaded;
 
     return `
       <tr>
@@ -488,9 +565,19 @@ function renderRows(bookings) {
             <span class="secondary">${escapeHtml(booking.customerEmail)}</span>
           </div>
         </td>
+        <td>
+          <div class="payment">
+            <span>${paymentMethodLabel(booking.paymentMethod)}</span>
+            ${paymentStatusBadge(booking.paymentStatus)}
+            ${hasPaymentProof ? `<button class="secondary-button compact-button" data-proof-id="${booking.id}" type="button">Скрін</button>` : ""}
+          </div>
+        </td>
         <td>${statusBadge(booking.status)}</td>
         <td>
-          ${isCancelled ? "" : `<button class="danger-button" data-cancel-id="${booking.id}">Скасувати</button>`}
+          <div class="row-actions">
+            ${isCancelled || isPaid ? "" : `<button class="secondary-button" data-payment-paid-id="${booking.id}" type="button">Оплачено</button>`}
+            ${isCancelled ? "" : `<button class="danger-button" data-cancel-id="${booking.id}" type="button">Скасувати</button>`}
+          </div>
         </td>
       </tr>
     `;
@@ -498,6 +585,14 @@ function renderRows(bookings) {
 
   rows.querySelectorAll("[data-cancel-id]").forEach((button) => {
     button.addEventListener("click", () => cancelBooking(button.dataset.cancelId));
+  });
+
+  rows.querySelectorAll("[data-payment-paid-id]").forEach((button) => {
+    button.addEventListener("click", () => updatePaymentStatus(button.dataset.paymentPaidId, "PAID"));
+  });
+
+  rows.querySelectorAll("[data-proof-id]").forEach((button) => {
+    button.addEventListener("click", () => openPaymentProof(button.dataset.proofId));
   });
 }
 
@@ -579,6 +674,29 @@ function statusBadge(status) {
   const cssClass = status === "CANCELLED" ? "cancelled" : "confirmed";
   const label = status === "CANCELLED" ? "Скасовано" : "Підтверджено";
   return `<span class="badge ${cssClass}">${label}</span>`;
+}
+
+function paymentStatusBadge(status) {
+  const labels = {
+    UNPAID: "Не оплачено",
+    PENDING_REVIEW: "На перевірці",
+    PAID: "Оплачено",
+  };
+  const cssClass = {
+    UNPAID: "unpaid",
+    PENDING_REVIEW: "pending",
+    PAID: "paid",
+  }[status] || "unpaid";
+
+  return `<span class="badge ${cssClass}">${labels[status] || status}</span>`;
+}
+
+function paymentMethodLabel(method) {
+  if (method === "CARD_TRANSFER") {
+    return "Карта";
+  }
+
+  return "У клубі";
 }
 
 function serviceBadge(active) {

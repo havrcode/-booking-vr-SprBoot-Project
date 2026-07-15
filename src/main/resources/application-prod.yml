@@ -10,6 +10,10 @@ spring:
     hikari:
       maximum-pool-size: ${DB_POOL_SIZE:10}
       minimum-idle: 2
+  servlet:
+    multipart:
+      max-file-size: ${PAYMENT_PROOF_MAX_FILE_SIZE:8MB}
+      max-request-size: ${PAYMENT_PROOF_MAX_FILE_SIZE:8MB}
   h2:
     console:
       enabled: false
@@ -27,6 +31,17 @@ spring:
     baseline-on-migrate: true
 
 app:
+  booking:
+    max-concurrent-bookings: ${MAX_CONCURRENT_BOOKINGS:1}
+  payment:
+    pay-at-club-enabled: ${PAYMENT_PAY_AT_CLUB_ENABLED:true}
+    card-transfer-enabled: ${PAYMENT_CARD_TRANSFER_ENABLED:false}
+    card-holder: ${PAYMENT_CARD_HOLDER:}
+    card-number: ${PAYMENT_CARD_NUMBER:}
+    card-bank: ${PAYMENT_CARD_BANK:}
+    card-transfer-note: ${PAYMENT_CARD_TRANSFER_NOTE:Після переказу можна додати скрін підтвердження.}
+    proofs-dir: ${PAYMENT_PROOFS_DIR:data/payment-proofs}
+    max-proof-size-bytes: ${PAYMENT_PROOF_MAX_BYTES:8388608}
   admin:
     api-key: ${ADMIN_API_KEY}
   cors:

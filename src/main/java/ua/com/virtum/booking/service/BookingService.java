@@ -2,16 +2,25 @@ package ua.com.virtum.booking.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import ua.com.virtum.booking.config.BookingProperties;
+import ua.com.virtum.booking.config.PaymentProperties;
 import ua.com.virtum.booking.dto.AdminBookingResponse;
 import ua.com.virtum.booking.dto.AdminVrServiceResponse;
 import ua.com.virtum.booking.dto.AvailabilityBlockResponse;
 import ua.com.virtum.booking.dto.BookingResponse;
+import ua.com.virtum.booking.dto.BookingSettingsResponse;
+import ua.com.virtum.booking.dto.BookingSlotResponse;
 import ua.com.virtum.booking.dto.CreateBookingRequest;
+import ua.com.virtum.booking.dto.PaymentProofResponse;
+import ua.com.virtum.booking.dto.PaymentSettingsResponse;
 import ua.com.virtum.booking.dto.SaveAvailabilityBlockRequest;
 import ua.com.virtum.booking.dto.SaveVrServiceRequest;
 import ua.com.virtum.booking.entity.AvailabilityBlock;
 import ua.com.virtum.booking.entity.Booking;
 import ua.com.virtum.booking.entity.BookingStatus;
+import ua.com.virtum.booking.entity.PaymentMethod;
+import ua.com.virtum.booking.entity.PaymentStatus;
 import ua.com.virtum.booking.entity.VrService;
 import ua.com.virtum.booking.exception.BadRequestException;
 import ua.com.virtum.booking.exception.ConflictException;
@@ -25,6 +34,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class BookingService {
@@ -32,21 +42,49 @@ public class BookingService {
     private final VrServiceRepository vrServiceRepository;
     private final AvailabilityBlockRepository availabilityBlockRepository;
     private final BookingNotificationService notificationService;
+    private final BookingProperties bookingProperties;
+    private final PaymentProperties paymentProperties;
+    private final PaymentProofStorage paymentProofStorage;
 
     public BookingService(
             BookingRepository bookingRepository,
             VrServiceRepository vrServiceRepository,
             AvailabilityBlockRepository availabilityBlockRepository,
-            BookingNotificationService notificationService
+            BookingNotificationService notificationService,
+            BookingProperties bookingProperties,
+            PaymentProperties paymentProperties,
+            PaymentProofStorage paymentProofStorage
     ) {
         this.bookingRepository = bookingRepository;
         this.vrServiceRepository = vrServiceRepository;
         this.availabilityBlockRepository = availabilityBlockRepository;
         this.notificationService = notificationService;
+        this.bookingProperties = bookingProperties;
+        this.paymentProperties = paymentProperties;
+        this.paymentProofStorage = paymentProofStorage;
     }
 
     public List<VrService> listServices() {
         return vrServiceRepository.findByActiveTrueOrderByTitleAsc();
+    }
+
+    public BookingSettingsResponse bookingSettings() {
+        return new BookingSettingsResponse(
+                bookingProperties.getMaxConcurrentBookings(),
+                paymentSettings()
+        );
+    }
+
+    public PaymentSettingsResponse paymentSettings() {
+        return new PaymentSettingsResponse(
+                paymentProperties.isPayAtClubEnabled(),
+                paymentProperties.isCardTransferEnabled(),
+                blankToNull(paymentProperties.getCardHolder()),
+                blankToNull(paymentProperties.getCardNumber()),
+                blankToNull(paymentProperties.getCardBank()),
+                blankToNull(paymentProperties.getCardTransferNote()),
+                paymentProperties.getMaxProofSizeBytes()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -91,14 +129,16 @@ public class BookingService {
         LocalDateTime startsAt = request.startsAt();
         LocalDateTime endsAt = startsAt.plusMinutes(service.getDurationMinutes());
 
-        // Only confirmed bookings block the calendar. Cancelled bookings keep history,
+        // Only confirmed bookings block capacity. Cancelled bookings keep history,
         // but their time slot can be booked again.
-        if (!bookingRepository.findByStatusAndStartsAtLessThanAndEndsAtGreaterThan(
+        long overlappingBookings = bookingRepository.countByStatusAndStartsAtLessThanAndEndsAtGreaterThan(
                 BookingStatus.CONFIRMED,
                 endsAt,
                 startsAt
-        ).isEmpty()) {
-            throw new ConflictException("This time slot is already booked. Please choose another one.");
+        );
+
+        if (overlappingBookings >= bookingProperties.getMaxConcurrentBookings()) {
+            throw new ConflictException("This time slot is fully booked. Please choose another one.");
         }
 
         if (!availabilityBlockRepository.findByStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(
@@ -115,14 +155,40 @@ public class BookingService {
         booking.setCustomerEmail(request.customerEmail());
         booking.setStartsAt(startsAt);
         booking.setEndsAt(endsAt);
+        booking.setPaymentMethod(resolvePaymentMethod(request.paymentMethod()));
+        booking.setPaymentStatus(PaymentStatus.UNPAID);
+        booking.setPaymentUploadToken(generatePaymentUploadToken());
 
         Booking savedBooking = bookingRepository.save(booking);
         notificationService.bookingCreated(toAdminResponse(savedBooking));
         return toResponse(savedBooking);
     }
 
+    @Transactional
+    public BookingResponse uploadPaymentProof(Long id, String token, MultipartFile file) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+
+        if (token == null || token.isBlank() || !token.equals(booking.getPaymentUploadToken())) {
+            throw new BadRequestException("Payment proof upload token is invalid.");
+        }
+
+        if (booking.getStatus() == BookingStatus.CANCELLED) {
+            throw new BadRequestException("Cannot upload payment proof for cancelled booking.");
+        }
+
+        PaymentProofStorage.StoredPaymentProof storedProof = paymentProofStorage.store(booking, file);
+        booking.setPaymentProofPath(storedProof.filename());
+        booking.setPaymentProofOriginalFilename(storedProof.originalFilename());
+        booking.setPaymentProofContentType(storedProof.contentType());
+        booking.setPaymentProofUploadedAt(LocalDateTime.now());
+        booking.setPaymentStatus(PaymentStatus.PENDING_REVIEW);
+
+        return toResponse(booking);
+    }
+
     @Transactional(readOnly = true)
-    public List<BookingResponse> listDay(LocalDate day) {
+    public List<BookingSlotResponse> listDay(LocalDate day) {
         LocalDateTime from = day.atStartOfDay();
         LocalDateTime to = day.plusDays(1).atStartOfDay();
         return bookingRepository.findByStatusAndStartsAtGreaterThanEqualAndStartsAtLessThanOrderByStartsAtAsc(
@@ -130,7 +196,7 @@ public class BookingService {
                         from,
                         to
                 ).stream()
-                .map(this::toResponse)
+                .map(this::toSlotResponse)
                 .toList();
     }
 
@@ -229,6 +295,44 @@ public class BookingService {
         return response;
     }
 
+    @Transactional
+    public AdminBookingResponse updatePaymentStatus(Long id, PaymentStatus paymentStatus) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+        booking.setPaymentStatus(paymentStatus);
+        return toAdminResponse(booking);
+    }
+
+    @Transactional(readOnly = true)
+    public Booking paymentProofBooking(Long id) {
+        Booking booking = bookingRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
+
+        if (booking.getPaymentProofPath() == null || booking.getPaymentProofPath().isBlank()) {
+            throw new NotFoundException("Payment proof not found for booking: " + id);
+        }
+
+        return booking;
+    }
+
+    private PaymentMethod resolvePaymentMethod(PaymentMethod paymentMethod) {
+        PaymentMethod effectivePaymentMethod = paymentMethod == null ? PaymentMethod.PAY_AT_CLUB : paymentMethod;
+
+        if (effectivePaymentMethod == PaymentMethod.PAY_AT_CLUB && !paymentProperties.isPayAtClubEnabled()) {
+            throw new BadRequestException("Pay at club is not available.");
+        }
+
+        if (effectivePaymentMethod == PaymentMethod.CARD_TRANSFER && !paymentProperties.isCardTransferEnabled()) {
+            throw new BadRequestException("Card transfer is not available.");
+        }
+
+        return effectivePaymentMethod;
+    }
+
+    private String generatePaymentUploadToken() {
+        return UUID.randomUUID().toString().replace("-", "");
+    }
+
     private void applyServiceRequest(VrService service, SaveVrServiceRequest request, String slug) {
         service.setSlug(slug);
         service.setTitle(request.title().trim());
@@ -273,7 +377,17 @@ public class BookingService {
                 b.getCustomerEmail(),
                 b.getStartsAt(),
                 b.getEndsAt(),
-                b.getStatus()
+                b.getStatus(),
+                b.getPaymentMethod(),
+                b.getPaymentStatus(),
+                b.getPaymentUploadToken()
+        );
+    }
+
+    private BookingSlotResponse toSlotResponse(Booking b) {
+        return new BookingSlotResponse(
+                b.getStartsAt(),
+                b.getEndsAt()
         );
     }
 
@@ -290,7 +404,21 @@ public class BookingService {
                 b.getStartsAt(),
                 b.getEndsAt(),
                 b.getStatus(),
+                b.getPaymentMethod(),
+                b.getPaymentStatus(),
+                toPaymentProofResponse(b),
                 b.getCreatedAt()
+        );
+    }
+
+    private PaymentProofResponse toPaymentProofResponse(Booking b) {
+        boolean uploaded = b.getPaymentProofPath() != null && !b.getPaymentProofPath().isBlank();
+        return new PaymentProofResponse(
+                uploaded,
+                b.getPaymentProofOriginalFilename(),
+                b.getPaymentProofContentType(),
+                b.getPaymentProofUploadedAt(),
+                uploaded ? "/api/v1/admin/bookings/%d/payment-proof".formatted(b.getId()) : null
         );
     }
 
@@ -312,5 +440,13 @@ public class BookingService {
                 null,
                 null
         );
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
     }
 }

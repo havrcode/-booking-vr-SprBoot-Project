@@ -30,6 +30,24 @@ curl http://localhost:8080/actuator/health
 curl http://localhost:8080/api/v1/services
 ```
 
+Публічні налаштування capacity:
+
+```bash
+curl http://localhost:8080/api/v1/booking-settings
+```
+
+Очікувано за замовчуванням:
+
+```json
+{
+  "maxConcurrentBookings": 1,
+  "payment": {
+    "payAtClubEnabled": true,
+    "cardTransferEnabled": false
+  }
+}
+```
+
 Бронювання:
 
 ```bash
@@ -40,11 +58,20 @@ curl -X POST http://localhost:8080/api/v1/bookings \
     "customerName": "Test Customer",
     "customerPhone": "+380501234567",
     "customerEmail": "test@example.com",
-    "startsAt": "2026-08-01T14:00:00"
+    "startsAt": "2026-08-01T14:00:00",
+    "paymentMethod": "PAY_AT_CLUB"
   }'
 ```
 
-Повторний запит на той самий час має повернути `409 Conflict`.
+За замовчуванням `MAX_CONCURRENT_BOOKINGS=1`, тому повторний запит на той самий час має повернути `409 Conflict`. Якщо на production виставлено більше значення, `409` має повертатись тільки після заповнення всіх паралельних місць.
+
+Public endpoint зайнятих інтервалів:
+
+```bash
+curl "http://localhost:8080/api/v1/bookings?date=2026-08-01"
+```
+
+Він має повертати тільки `startsAt` і `endsAt`, без `customerName`, `customerPhone` або `customerEmail`.
 
 ## 3. Admin UI
 
@@ -71,10 +98,34 @@ dev-admin-key
 Перевір вкладки:
 
 - `Бронювання`: бронювання видно, його можна скасувати.
+- `Бронювання`: видно спосіб/статус оплати, скрін підтвердження і кнопку `Оплачено`.
 - `Послуги`: можна змінити ціну, тривалість, активність.
 - `Доступність`: можна закрити майбутній час і потім знову відкрити.
 
-## 4. Тест закритого слота
+## 4. Тест ручної оплати
+
+Для тесту переказу на карту локально запусти backend з env:
+
+```text
+PAYMENT_CARD_TRANSFER_ENABLED=true
+PAYMENT_CARD_HOLDER=Virtum VR
+PAYMENT_CARD_NUMBER=4444555566667777
+PAYMENT_CARD_BANK=Test Bank
+```
+
+Після цього:
+
+1. Відкрий widget.
+2. Обери `Переказ на карту`.
+3. Перевір, що реквізити карти показані у формі.
+4. Додай тестовий image-файл як скрін оплати.
+5. Створи бронювання.
+6. В адмінці відкрий `Бронювання`.
+7. Перевір, що payment status став `На перевірці`.
+8. Натисни `Скрін`, перевір, що файл відкрився.
+9. Натисни `Оплачено`, перевір, що статус став `Оплачено`.
+
+## 5. Тест закритого слота
 
 1. В адмінці відкрий `Доступність`.
 2. Закрий майбутній час, наприклад `2026-08-01 15:00-16:00`.
@@ -84,7 +135,7 @@ dev-admin-key
 6. Видали блокування в адмінці.
 7. Спробуй ще раз: бронювання має пройти.
 
-## 5. Telegram
+## 6. Telegram
 
 Створи bot через `@BotFather`, отримай token.
 
@@ -102,6 +153,13 @@ https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates
 Production ENV:
 
 ```text
+MAX_CONCURRENT_BOOKINGS=1
+PAYMENT_PAY_AT_CLUB_ENABLED=true
+PAYMENT_CARD_TRANSFER_ENABLED=true
+PAYMENT_CARD_HOLDER=<card-holder>
+PAYMENT_CARD_NUMBER=<card-number>
+PAYMENT_CARD_BANK=<bank-name>
+PAYMENT_PROOFS_DIR=data/payment-proofs
 TELEGRAM_NOTIFICATIONS_ENABLED=true
 TELEGRAM_BOT_TOKEN=<token-from-botfather>
 TELEGRAM_CHAT_ID=<chat-id>
@@ -109,7 +167,7 @@ TELEGRAM_CHAT_ID=<chat-id>
 
 Після цього створи тестове бронювання. У Telegram має прийти повідомлення про нове бронювання.
 
-## 6. Підключення до virtum-vr.com.ua
+## 7. Підключення до virtum-vr.com.ua
 
 Після deployment backend на:
 
@@ -130,6 +188,7 @@ https://booking-api.virtum-vr.com.ua
   window.VIRTUM_BOOKING_WIDGET = {
     apiBase: "https://booking-api.virtum-vr.com.ua",
     triggerSelector: "[data-virtum-booking-open]",
+    maxConcurrentBookings: 1,
     startHour: 10,
     endHour: 21,
     slotStepMinutes: 30
@@ -150,7 +209,7 @@ data-virtum-booking-open
 <a href="#booking" class="btn pixelFont btn1" data-virtum-booking-open>Забронювати</a>
 ```
 
-## 7. Final Smoke Test
+## 8. Final Smoke Test
 
 Після підключення на реальному сайті:
 
@@ -160,13 +219,15 @@ data-virtum-booking-open
 4. Перевір, що modal відкрився.
 5. Обери послугу, дату, час.
 6. Заповни тестові дані.
-7. Створи бронювання.
-8. Перевір, що бронювання з'явилось у admin panel.
-9. Перевір, що Telegram отримав повідомлення.
-10. Скасуй бронювання в admin panel.
-11. Перевір, що Telegram отримав повідомлення про зміну статусу.
+7. Обери оплату в клубі і створи бронювання.
+8. Повтори тест з оплатою картою і скріном, якщо `PAYMENT_CARD_TRANSFER_ENABLED=true`.
+9. Перевір, що бронювання з'явилось у admin panel.
+10. Познач тестову оплату як `Оплачено`.
+11. Перевір, що Telegram отримав повідомлення.
+12. Скасуй бронювання в admin panel.
+13. Перевір, що Telegram отримав повідомлення про зміну статусу.
 
-## 8. Automated Checks
+## 9. Automated Checks
 
 Перед merge кожної гілки:
 

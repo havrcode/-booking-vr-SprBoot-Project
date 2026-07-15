@@ -87,6 +87,11 @@
   gap: 14px;
 }
 
+.virtum-booking-payment-grid {
+  grid-template-columns: minmax(180px, 0.8fr) minmax(180px, 0.8fr) minmax(220px, 1.4fr);
+  align-items: stretch;
+}
+
 .virtum-booking-form label {
   display: grid;
   gap: 8px;
@@ -105,6 +110,27 @@
   background: #0f1428;
   color: #ffffff;
   font: inherit;
+}
+
+.virtum-booking-form input[type="file"] {
+  padding: 10px 12px;
+}
+
+.virtum-booking-payment-details {
+  display: grid;
+  gap: 5px;
+  min-height: 46px;
+  border: 1px solid rgba(102, 238, 255, 0.2);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #0b1021;
+  color: #b9c8d9;
+  font-size: 13px;
+}
+
+.virtum-booking-payment-details strong {
+  color: #ffdd45;
+  font-size: 15px;
 }
 
 .virtum-booking-form input:focus,
@@ -173,6 +199,7 @@
   }
 
   .virtum-booking-grid,
+  .virtum-booking-payment-grid,
   .virtum-booking-actions {
     grid-template-columns: 1fr;
   }

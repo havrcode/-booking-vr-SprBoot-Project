@@ -7,6 +7,8 @@
 Технічно це `booking API` або `booking service`: окремий backend-сервіс, який:
 
 - зберігає послуги, ціни, бронювання і закриті слоти;
+- контролює кількість одночасних бронювань через capacity;
+- веде ручну оплату: оплата в клубі або переказ на карту зі скріном підтвердження;
 - віддає public API для сайту `virtum-vr.com.ua`;
 - віддає public booking widget для кнопки `Забронювати`;
 - має admin panel для управління бронюваннями, послугами і доступністю;
@@ -23,16 +25,19 @@ virtum-vr.com.ua
                  ├─ Admin API
                  ├─ Admin UI
                  ├─ PostgreSQL
+                 ├─ Payment proof file storage
                  └─ Telegram Bot API
 ```
 
 ## Що вже закрито в коді
 
 - Public services API: `GET /api/v1/services`.
+- Public booking settings API: `GET /api/v1/booking-settings`.
 - Public booking API: `POST /api/v1/bookings`.
-- Public day bookings API: `GET /api/v1/bookings?date=YYYY-MM-DD`.
+- Public payment proof upload API: `POST /api/v1/bookings/{id}/payment-proof`.
+- Public day bookings API: `GET /api/v1/bookings?date=YYYY-MM-DD` повертає тільки зайняті інтервали без персональних даних клієнтів.
 - Public availability blocks API: `GET /api/v1/availability-blocks?date=YYYY-MM-DD`.
-- Admin bookings API: перегляд і скасування бронювань.
+- Admin bookings API: перегляд, скасування бронювань, перегляд скрінів оплати і зміна payment status.
 - Admin services API: створення, редагування, увімкнення/вимкнення послуг і цін.
 - Admin availability API: закриття і відкриття слотів.
 - Admin UI: вкладки `Бронювання`, `Послуги`, `Доступність`.
@@ -67,6 +72,16 @@ DB_PORT=5432
 DB_NAME=virtum_booking
 DB_USER=virtum_booking
 DB_PASSWORD=<strong-password>
+MAX_CONCURRENT_BOOKINGS=1
+PAYMENT_PAY_AT_CLUB_ENABLED=true
+PAYMENT_CARD_TRANSFER_ENABLED=true
+PAYMENT_CARD_HOLDER=<card-holder>
+PAYMENT_CARD_NUMBER=<card-number>
+PAYMENT_CARD_BANK=<bank-name>
+PAYMENT_CARD_TRANSFER_NOTE=<short-note-for-client>
+PAYMENT_PROOFS_DIR=data/payment-proofs
+PAYMENT_PROOF_MAX_FILE_SIZE=8MB
+PAYMENT_PROOF_MAX_BYTES=8388608
 ADMIN_API_KEY=<long-random-admin-key>
 TELEGRAM_NOTIFICATIONS_ENABLED=true
 TELEGRAM_BOT_TOKEN=<token-from-botfather>
@@ -94,11 +109,19 @@ https://booking-api.virtum-vr.com.ua/widget/booking-widget.js
 ## Acceptance Checklist
 
 - `GET /api/v1/services` повертає активні послуги.
+- `GET /api/v1/booking-settings` повертає production capacity.
+- `GET /api/v1/booking-settings` повертає актуальні payment settings без admin секретів.
+- `GET /api/v1/bookings?date=YYYY-MM-DD` не повертає імʼя, телефон або email клієнта.
 - `POST /api/v1/bookings` створює бронювання.
-- Повторне бронювання того самого часу повертає `409`.
+- Бронювання того самого часу дозволяється тільки до ліміту `MAX_CONCURRENT_BOOKINGS`; наступне повертає `409`.
 - Скасоване бронювання не блокує слот.
 - Закритий адміністратором слот повертає `409` при бронюванні.
 - Public widget не показує зайняті або закриті слоти як доступні.
+- Public widget дозволяє обрати оплату в клубі або переказ на карту.
+- Якщо `PAYMENT_CARD_TRANSFER_ENABLED=true`, widget показує реквізити карти.
+- Клієнт може завантажити скрін підтвердження оплати.
+- Admin UI показує payment status і дозволяє відкрити скрін.
+- Admin UI дозволяє позначити бронювання як `PAID`.
 - Admin UI дозволяє редагувати ціни.
 - Admin UI дозволяє вимикати послуги.
 - Admin UI дозволяє закривати і відкривати слоти.
@@ -106,13 +129,14 @@ https://booking-api.virtum-vr.com.ua/widget/booking-widget.js
 - Telegram отримує повідомлення про скасування бронювання.
 - Production працює з PostgreSQL, не з H2.
 - Admin API key не потрапляє на публічний сайт.
+- `MAX_CONCURRENT_BOOKINGS` відповідає реальній кількості одночасних клієнтів/груп, які клуб може прийняти.
 
 ## Що можна додати пізніше
 
 Це не блокує launch, але може бути наступним етапом:
 
-- окрема сутність `rooms` або `vr-stations`, якщо треба бронювати конкретні фізичні VR-місця;
+- окрема сутність `rooms` або `vr-stations`, якщо треба не тільки capacity, а й бронювання конкретного фізичного VR-місця;
 - SMS або email-підтвердження клієнту;
-- онлайн-оплата;
+- автоматична онлайн-оплата через платіжний шлюз;
 - календарний dashboard по днях/тижнях;
 - audit log для дій адміністратора.

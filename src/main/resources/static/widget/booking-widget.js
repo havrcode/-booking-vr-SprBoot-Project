@@ -2,6 +2,7 @@
   const DEFAULT_CONFIG = {
     apiBase: "",
     triggerSelector: "[data-virtum-booking-open]",
+    maxConcurrentBookings: 1,
     startHour: 10,
     endHour: 21,
     slotStepMinutes: 30,
@@ -19,6 +20,15 @@
   const state = {
     availabilityBlocks: [],
     bookings: [],
+    payment: {
+      payAtClubEnabled: true,
+      cardTransferEnabled: false,
+      cardHolder: null,
+      cardNumber: null,
+      cardBank: null,
+      cardTransferNote: null,
+      maxProofSizeBytes: 8 * 1024 * 1024,
+    },
     services: [],
     selectedService: null,
   };
@@ -29,6 +39,9 @@
   let dateInput;
   let timeSelect;
   let messageNode;
+  let paymentDetailsNode;
+  let paymentMethodSelect;
+  let paymentProofInput;
   let submitButton;
 
   function init() {
@@ -96,6 +109,21 @@
             </label>
           </div>
 
+          <div class="virtum-booking-grid virtum-booking-payment-grid">
+            <label>
+              Оплата
+              <select name="paymentMethod" required>
+                <option value="PAY_AT_CLUB">У клубі по приходу</option>
+                <option value="CARD_TRANSFER">Переказ на карту</option>
+              </select>
+            </label>
+            <label class="virtum-booking-proof">
+              Скрін оплати
+              <input name="paymentProof" type="file" accept="image/png,image/jpeg,image/webp,image/heic,image/heif">
+            </label>
+            <div class="virtum-booking-payment-details" aria-live="polite"></div>
+          </div>
+
           <p class="virtum-booking-note">Після бронювання адміністратор побачить заявку в адмінці.</p>
 
           <div class="virtum-booking-actions">
@@ -113,6 +141,9 @@
     dateInput = form.elements.date;
     timeSelect = form.elements.time;
     messageNode = root.querySelector(".virtum-booking-message");
+    paymentDetailsNode = root.querySelector(".virtum-booking-payment-details");
+    paymentMethodSelect = form.elements.paymentMethod;
+    paymentProofInput = form.elements.paymentProof;
     submitButton = root.querySelector(".virtum-booking-submit");
 
     dateInput.min = toDateValue(new Date());
@@ -127,6 +158,7 @@
       renderTimeSlots();
     });
     dateInput.addEventListener("change", loadBookingsForDate);
+    paymentMethodSelect.addEventListener("change", renderPaymentOptions);
     form.addEventListener("submit", submitBooking);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape" && !root.hidden) {
@@ -177,6 +209,7 @@
       await reloadServices();
     }
 
+    await reloadBookingSettings();
     await loadBookingsForDate();
     serviceSelect.focus();
   }
@@ -199,6 +232,74 @@
     } finally {
       serviceSelect.disabled = false;
     }
+  }
+
+  async function reloadBookingSettings() {
+    try {
+      const settings = await request("/api/v1/booking-settings");
+      const maxConcurrentBookings = Number(settings.maxConcurrentBookings);
+
+      if (Number.isInteger(maxConcurrentBookings) && maxConcurrentBookings > 0) {
+        config.maxConcurrentBookings = maxConcurrentBookings;
+      }
+
+      if (settings.payment) {
+        state.payment = {
+          ...state.payment,
+          ...settings.payment,
+        };
+      }
+
+      renderPaymentOptions();
+    } catch (error) {
+      // Keep the configured fallback. The backend still enforces capacity.
+      renderPaymentOptions();
+    }
+  }
+
+  function renderPaymentOptions() {
+    const payment = state.payment;
+    const cardOption = paymentMethodSelect.querySelector('option[value="CARD_TRANSFER"]');
+    const clubOption = paymentMethodSelect.querySelector('option[value="PAY_AT_CLUB"]');
+
+    clubOption.disabled = !payment.payAtClubEnabled;
+    cardOption.disabled = !payment.cardTransferEnabled;
+
+    if (paymentMethodSelect.value === "CARD_TRANSFER" && !payment.cardTransferEnabled) {
+      paymentMethodSelect.value = "PAY_AT_CLUB";
+    }
+
+    if (paymentMethodSelect.value === "PAY_AT_CLUB" && !payment.payAtClubEnabled && payment.cardTransferEnabled) {
+      paymentMethodSelect.value = "CARD_TRANSFER";
+    }
+
+    const isCardTransfer = paymentMethodSelect.value === "CARD_TRANSFER" && payment.cardTransferEnabled;
+    paymentProofInput.disabled = !isCardTransfer;
+    paymentProofInput.required = false;
+    paymentProofInput.closest("label").hidden = !isCardTransfer;
+    paymentDetailsNode.innerHTML = isCardTransfer ? paymentDetailsHtml(payment) : "Оплату можна внести в клубі по приходу.";
+  }
+
+  function paymentDetailsHtml(payment) {
+    const details = [];
+
+    if (payment.cardNumber) {
+      details.push(`<strong>${escapeHtml(formatCardNumber(payment.cardNumber))}</strong>`);
+    }
+
+    if (payment.cardHolder) {
+      details.push(`<span>${escapeHtml(payment.cardHolder)}</span>`);
+    }
+
+    if (payment.cardBank) {
+      details.push(`<span>${escapeHtml(payment.cardBank)}</span>`);
+    }
+
+    if (payment.cardTransferNote) {
+      details.push(`<span>${escapeHtml(payment.cardTransferNote)}</span>`);
+    }
+
+    return details.length ? details.join("") : "Реквізити карти уточніть у адміністратора.";
   }
 
   function renderServices() {
@@ -290,7 +391,7 @@
       const startsAt = parseLocalDateTime(dateValue, time);
       const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
       const past = startsAt <= today;
-      const booked = overlapsBooking(startsAt, endsAt);
+      const booked = isFullyBooked(startsAt, endsAt);
       const closed = overlapsAvailabilityBlock(startsAt, endsAt);
 
       slots.push({
@@ -304,12 +405,14 @@
     return slots;
   }
 
-  function overlapsBooking(startsAt, endsAt) {
-    return state.bookings.some((booking) => {
+  function isFullyBooked(startsAt, endsAt) {
+    const overlappingBookings = state.bookings.filter((booking) => {
       const bookingStart = new Date(booking.startsAt);
       const bookingEnd = new Date(booking.endsAt);
       return bookingStart < endsAt && bookingEnd > startsAt;
-    });
+    }).length;
+
+    return overlappingBookings >= config.maxConcurrentBookings;
   }
 
   function overlapsAvailabilityBlock(startsAt, endsAt) {
@@ -342,21 +445,61 @@
           customerPhone: String(data.get("customerPhone") || "").trim(),
           customerEmail: String(data.get("customerEmail") || "").trim(),
           startsAt: `${data.get("date")}T${data.get("time")}:00`,
+          paymentMethod: String(data.get("paymentMethod") || "PAY_AT_CLUB"),
         }),
       });
+      const paymentProof = data.get("paymentProof");
+      const shouldUploadProof = booking.paymentMethod === "CARD_TRANSFER"
+        && paymentProof instanceof File
+        && paymentProof.size > 0;
+
+      if (shouldUploadProof) {
+        await uploadPaymentProof(booking, paymentProof);
+      }
 
       form.reset();
       dateInput.min = toDateValue(new Date());
       dateInput.value = firstBookableDate();
       renderServices();
+      renderPaymentOptions();
       await loadBookingsForDate();
-      setMessage(`Готово! Бронювання #${booking.id} створено.`);
+      setMessage(shouldUploadProof
+        ? `Готово! Бронювання #${booking.id} створено, скрін оплати завантажено.`
+        : `Готово! Бронювання #${booking.id} створено.`);
     } catch (error) {
       setMessage(error.message);
       await loadBookingsForDate();
     } finally {
       submitButton.disabled = false;
     }
+  }
+
+  async function uploadPaymentProof(booking, file) {
+    if (file.size > state.payment.maxProofSizeBytes) {
+      throw new Error("Скрін оплати завеликий. Оберіть менший файл.");
+    }
+
+    const body = new FormData();
+    body.append("file", file);
+
+    const response = await fetch(
+      `${config.apiBase}/api/v1/bookings/${booking.id}/payment-proof?token=${encodeURIComponent(booking.paymentUploadToken)}`,
+      {
+        method: "POST",
+        body,
+      }
+    );
+
+    const contentType = response.headers.get("content-type") || "";
+    const responseBody = contentType.includes("application/json")
+      ? await response.json().catch(() => null)
+      : await response.text().catch(() => "");
+
+    if (!response.ok) {
+      throw new Error(errorMessage(response.status, responseBody));
+    }
+
+    return responseBody;
   }
 
   async function request(path, options = {}) {
@@ -450,6 +593,10 @@
       currency: "UAH",
       maximumFractionDigits: 0,
     }).format(price);
+  }
+
+  function formatCardNumber(value) {
+    return String(value || "").replace(/\s+/g, "").replace(/(.{4})/g, "$1 ").trim();
   }
 
   function setMessage(text) {

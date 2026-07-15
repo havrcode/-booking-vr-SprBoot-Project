@@ -24,6 +24,21 @@ public class Booking {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private BookingStatus status = BookingStatus.CONFIRMED;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private PaymentMethod paymentMethod = PaymentMethod.PAY_AT_CLUB;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 32)
+    private PaymentStatus paymentStatus = PaymentStatus.UNPAID;
+    @Column(length = 64)
+    private String paymentUploadToken;
+    @Column(length = 500)
+    private String paymentProofPath;
+    @Column(length = 255)
+    private String paymentProofOriginalFilename;
+    @Column(length = 100)
+    private String paymentProofContentType;
+    private LocalDateTime paymentProofUploadedAt;
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -42,5 +57,19 @@ public class Booking {
     public void setEndsAt(LocalDateTime endsAt) { this.endsAt = endsAt; }
     public BookingStatus getStatus() { return status; }
     public void setStatus(BookingStatus status) { this.status = status; }
+    public PaymentMethod getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(PaymentMethod paymentMethod) { this.paymentMethod = paymentMethod; }
+    public PaymentStatus getPaymentStatus() { return paymentStatus; }
+    public void setPaymentStatus(PaymentStatus paymentStatus) { this.paymentStatus = paymentStatus; }
+    public String getPaymentUploadToken() { return paymentUploadToken; }
+    public void setPaymentUploadToken(String paymentUploadToken) { this.paymentUploadToken = paymentUploadToken; }
+    public String getPaymentProofPath() { return paymentProofPath; }
+    public void setPaymentProofPath(String paymentProofPath) { this.paymentProofPath = paymentProofPath; }
+    public String getPaymentProofOriginalFilename() { return paymentProofOriginalFilename; }
+    public void setPaymentProofOriginalFilename(String paymentProofOriginalFilename) { this.paymentProofOriginalFilename = paymentProofOriginalFilename; }
+    public String getPaymentProofContentType() { return paymentProofContentType; }
+    public void setPaymentProofContentType(String paymentProofContentType) { this.paymentProofContentType = paymentProofContentType; }
+    public LocalDateTime getPaymentProofUploadedAt() { return paymentProofUploadedAt; }
+    public void setPaymentProofUploadedAt(LocalDateTime paymentProofUploadedAt) { this.paymentProofUploadedAt = paymentProofUploadedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

@@ -2,7 +2,10 @@ package ua.com.virtum.booking.notification;
 
 import org.junit.jupiter.api.Test;
 import ua.com.virtum.booking.dto.AdminBookingResponse;
+import ua.com.virtum.booking.dto.PaymentProofResponse;
 import ua.com.virtum.booking.entity.BookingStatus;
+import ua.com.virtum.booking.entity.PaymentMethod;
+import ua.com.virtum.booking.entity.PaymentStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -63,6 +66,9 @@ class BookingNotificationServiceTests {
                 LocalDateTime.of(2026, 7, 1, 14, 0),
                 LocalDateTime.of(2026, 7, 1, 15, 0),
                 BookingStatus.CANCELLED,
+                PaymentMethod.PAY_AT_CLUB,
+                PaymentStatus.UNPAID,
+                new PaymentProofResponse(false, null, null, null, null),
                 LocalDateTime.of(2026, 6, 28, 10, 0)
         );
     }
@@ -81,4 +87,3 @@ class BookingNotificationServiceTests {
         }
     }
 }
-

@@ -8,6 +8,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
+    long countByStatusAndStartsAtLessThanAndEndsAtGreaterThan(
+            BookingStatus status,
+            LocalDateTime end,
+            LocalDateTime start
+    );
+
     List<Booking> findByStatusAndStartsAtLessThanAndEndsAtGreaterThan(
             BookingStatus status,
             LocalDateTime end,

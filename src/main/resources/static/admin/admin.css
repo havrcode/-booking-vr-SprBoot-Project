@@ -244,7 +244,7 @@ h1 {
 
 table {
   width: 100%;
-  min-width: 920px;
+  min-width: 1080px;
   border-collapse: collapse;
 }
 
@@ -276,7 +276,8 @@ tbody tr:last-child td {
 }
 
 .client,
-.contact {
+.contact,
+.payment {
   display: grid;
   gap: 4px;
 }
@@ -310,6 +311,28 @@ code {
 .badge.cancelled {
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+.badge.paid {
+  background: var(--ok-soft);
+  color: var(--accent-strong);
+}
+
+.badge.pending {
+  background: #fff7d7;
+  color: #8a6500;
+}
+
+.badge.unpaid {
+  background: #eef1f4;
+  color: var(--muted);
+}
+
+.compact-button {
+  width: max-content;
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .danger-button {

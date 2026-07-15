@@ -5,7 +5,8 @@
 ## Що реалізовано
 - REST API для отримання послуг, створення бронювання, перегляду бронювань на день.
 - Валідація payload та помилки у JSON форматі.
-- Захист від перетину слотів (конфлікт часу).
+- Захист від переповнення слотів з configurable capacity через `MAX_CONCURRENT_BOOKINGS`.
+- Public API для зайнятих слотів не віддає імʼя, телефон або email клієнта.
 - Початкові дані з VR-послугами.
 - CORS налаштовано через `app.cors.allowed-origins`.
 - Flyway міграції для схеми бази даних.
@@ -13,6 +14,7 @@
 - Admin API та проста адмін-сторінка для перегляду/скасування бронювань.
 - Керування VR-послугами з адмінки: створення, редагування, увімкнення/вимкнення.
 - Керування доступністю з адмінки: закриття/відкриття слотів без створення фейкових бронювань.
+- Ручна оплата: оплата в клубі або переказ на карту з optional upload скріну підтвердження.
 - Public booking widget для підключення до кнопки `Забронювати` на існуючому сайті.
 - Telegram-нотифікації про нові бронювання та зміну статусу.
 
@@ -34,6 +36,24 @@ docs/TESTING_AND_LAUNCH.md
 ### `GET /api/v1/services`
 Список активних послуг.
 
+### `GET /api/v1/booking-settings`
+Публічні налаштування бронювання:
+
+```json
+{
+  "maxConcurrentBookings": 1,
+  "payment": {
+    "payAtClubEnabled": true,
+    "cardTransferEnabled": false,
+    "cardHolder": null,
+    "cardNumber": null,
+    "cardBank": null,
+    "cardTransferNote": "Після переказу можна додати скрін підтвердження.",
+    "maxProofSizeBytes": 8388608
+  }
+}
+```
+
 ### `POST /api/v1/bookings`
 ```json
 {
@@ -41,12 +61,32 @@ docs/TESTING_AND_LAUNCH.md
   "customerName": "Іван Петренко",
   "customerPhone": "+380501234567",
   "customerEmail": "ivan@example.com",
-  "startsAt": "2026-05-20T14:00:00"
+  "startsAt": "2026-05-20T14:00:00",
+  "paymentMethod": "PAY_AT_CLUB"
 }
 ```
 
+Підтримувані `paymentMethod`:
+
+```text
+PAY_AT_CLUB
+CARD_TRANSFER
+```
+
+### `POST /api/v1/bookings/{id}/payment-proof?token=...`
+Optional upload скріну підтвердження оплати. Використовується `multipart/form-data` поле `file`. Token повертається у відповіді створення бронювання як `paymentUploadToken`.
+
 ### `GET /api/v1/bookings?date=2026-05-20`
-Список бронювань за день.
+Список зайнятих інтервалів за день для public widget. Endpoint спеціально не повертає персональні дані клієнтів.
+
+```json
+[
+  {
+    "startsAt": "2026-05-20T14:00:00",
+    "endsAt": "2026-05-20T15:00:00"
+  }
+]
+```
 
 ### `GET /api/v1/availability-blocks?date=2026-05-20`
 Список закритих адміністратором періодів за день. Public widget використовує цей endpoint, щоб не показувати закриті слоти як доступні.
@@ -104,10 +144,24 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `DB_NAME` | `virtum_booking` |
 | `DB_USER` | `virtum_booking` |
 | `DB_PASSWORD` | `strong-password` |
+| `MAX_CONCURRENT_BOOKINGS` | `1` |
+| `PAYMENT_PAY_AT_CLUB_ENABLED` | `true` |
+| `PAYMENT_CARD_TRANSFER_ENABLED` | `true` |
+| `PAYMENT_CARD_HOLDER` | `Virtum VR` |
+| `PAYMENT_CARD_NUMBER` | `4444555566667777` |
+| `PAYMENT_CARD_BANK` | `mono/privat` |
+| `PAYMENT_CARD_TRANSFER_NOTE` | `Вкажіть номер бронювання в коментарі` |
+| `PAYMENT_PROOFS_DIR` | `data/payment-proofs` |
+| `PAYMENT_PROOF_MAX_FILE_SIZE` | `8MB` |
+| `PAYMENT_PROOF_MAX_BYTES` | `8388608` |
 | `ADMIN_API_KEY` | `long-random-admin-key` |
 | `TELEGRAM_NOTIFICATIONS_ENABLED` | `true` |
 | `TELEGRAM_BOT_TOKEN` | `123456:bot-token` |
 | `TELEGRAM_CHAT_ID` | `123456789` |
+
+`MAX_CONCURRENT_BOOKINGS` - це кількість бронювань, які можна прийняти на один і той самий часовий інтервал. Якщо фізично працює одне VR-місце/кімната, залиш `1`. Якщо можна обслуговувати кілька клієнтів або груп одночасно, постав реальну кількість.
+
+Щоб показати клієнту реквізити карти, вистав `PAYMENT_CARD_TRANSFER_ENABLED=true` і заповни `PAYMENT_CARD_NUMBER`, `PAYMENT_CARD_HOLDER`, `PAYMENT_CARD_BANK`. Файли зі скрінами оплати зберігаються у `PAYMENT_PROOFS_DIR`; ця директорія не повинна комітитись у git.
 
 ## Підключення до virtum-vr.com.ua
 1. Підняти цей backend на домені, наприклад `https://booking-api.virtum-vr.com.ua`.
@@ -145,6 +199,8 @@ customerPhone
 customerEmail
 date
 time
+paymentMethod
+paymentProof
 ```
 
 Приклад використання:
@@ -198,6 +254,26 @@ status=CONFIRMED
 CONFIRMED
 CANCELLED
 ```
+
+### `PATCH /api/v1/admin/bookings/{id}/payment-status`
+Оновлює статус ручної оплати.
+
+```json
+{
+  "paymentStatus": "PAID"
+}
+```
+
+Підтримувані статуси:
+
+```text
+UNPAID
+PENDING_REVIEW
+PAID
+```
+
+### `GET /api/v1/admin/bookings/{id}/payment-proof`
+Повертає завантажений клієнтом скрін підтвердження оплати. Endpoint захищений `X-Admin-Api-Key`.
 
 ### `GET /api/v1/admin/services`
 Повертає всі послуги для адмінки, включно з неактивними.
@@ -255,7 +331,7 @@ https://booking-api.virtum-vr.com.ua/admin.html
 
 В адмінці є три вкладки:
 
-- `Бронювання` - перегляд, фільтрація та скасування бронювань;
+- `Бронювання` - перегляд, фільтрація, скасування бронювань і ручна перевірка оплати;
 - `Послуги` - створення, редагування та увімкнення/вимкнення VR-послуг;
 - `Доступність` - закриття/відкриття слотів, коли клуб не приймає бронювання.
 

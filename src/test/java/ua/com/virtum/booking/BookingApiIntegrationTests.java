@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -16,13 +17,21 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "app.payment.card-transfer-enabled=true",
+        "app.payment.card-holder=Virtum VR",
+        "app.payment.card-number=4444555566667777",
+        "app.payment.card-bank=Test Bank",
+        "app.payment.proofs-dir=target/payment-proofs-test"
+})
 @AutoConfigureMockMvc
 class BookingApiIntegrationTests {
     @Autowired
@@ -35,6 +44,16 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$.length()", greaterThan(0)))
                 .andExpect(jsonPath("$[0].slug").exists())
                 .andExpect(jsonPath("$[0].title").exists());
+    }
+
+    @Test
+    void exposesPublicBookingSettings() throws Exception {
+        mockMvc.perform(get("/api/v1/booking-settings"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.maxConcurrentBookings").value(1))
+                .andExpect(jsonPath("$.payment.payAtClubEnabled").value(true))
+                .andExpect(jsonPath("$.payment.cardTransferEnabled").value(true))
+                .andExpect(jsonPath("$.payment.cardNumber").value("4444555566667777"));
     }
 
     @Test
@@ -77,7 +96,18 @@ class BookingApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.serviceSlug").value("vr-party-60"))
                 .andExpect(jsonPath("$.startsAt").value(startsAtValue))
-                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+                .andExpect(jsonPath("$.status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.paymentMethod").value("PAY_AT_CLUB"))
+                .andExpect(jsonPath("$.paymentStatus").value("UNPAID"));
+
+        mockMvc.perform(get("/api/v1/bookings")
+                        .param("date", startsAt.toLocalDate().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].startsAt").value(startsAtValue))
+                .andExpect(jsonPath("$[0].endsAt").exists())
+                .andExpect(jsonPath("$[0].customerName").doesNotExist())
+                .andExpect(jsonPath("$[0].customerPhone").doesNotExist())
+                .andExpect(jsonPath("$[0].customerEmail").doesNotExist());
 
         mockMvc.perform(post("/api/v1/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -139,6 +169,78 @@ class BookingApiIntegrationTests {
                         .content(payload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    @Test
+    void clientCanUploadPaymentProofAndAdminCanMarkPaid() throws Exception {
+        LocalDateTime startsAt = LocalDateTime.now()
+                .plusDays(12)
+                .withHour(11)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        String dateValue = startsAt.toLocalDate().toString();
+
+        String payload = """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Card Transfer Customer",
+                  "customerPhone": "+380501234571",
+                  "customerEmail": "card-transfer@example.com",
+                  "startsAt": "%s",
+                  "paymentMethod": "CARD_TRANSFER"
+                }
+                """.formatted(startsAtValue);
+
+        MvcResult created = mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentMethod").value("CARD_TRANSFER"))
+                .andExpect(jsonPath("$.paymentStatus").value("UNPAID"))
+                .andExpect(jsonPath("$.paymentUploadToken").exists())
+                .andReturn();
+        Integer bookingId = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
+        String paymentUploadToken = JsonPath.read(created.getResponse().getContentAsString(), "$.paymentUploadToken");
+
+        MockMultipartFile proof = new MockMultipartFile(
+                "file",
+                "payment-proof.png",
+                "image/png",
+                new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47}
+        );
+
+        mockMvc.perform(multipart("/api/v1/bookings/{id}/payment-proof", bookingId)
+                        .file(proof)
+                        .param("token", paymentUploadToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentStatus").value("PENDING_REVIEW"));
+
+        mockMvc.perform(get("/api/v1/admin/bookings/{id}/payment-proof", bookingId))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(get("/api/v1/admin/bookings/{id}/payment-proof", bookingId)
+                        .header("X-Admin-Api-Key", "dev-admin-key"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", "image/png"));
+
+        mockMvc.perform(get("/api/v1/admin/bookings")
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .param("from", dateValue)
+                        .param("to", dateValue))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(bookingId))
+                .andExpect(jsonPath("$[0].paymentStatus").value("PENDING_REVIEW"))
+                .andExpect(jsonPath("$[0].paymentProof.uploaded").value(true))
+                .andExpect(jsonPath("$[0].paymentProof.url").value("/api/v1/admin/bookings/" + bookingId + "/payment-proof"));
+
+        mockMvc.perform(patch("/api/v1/admin/bookings/{id}/payment-status", bookingId)
+                        .header("X-Admin-Api-Key", "dev-admin-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"paymentStatus\":\"PAID\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentStatus").value("PAID"));
     }
 
     @Test
