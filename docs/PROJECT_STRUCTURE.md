@@ -408,7 +408,7 @@ Payload для створення або оновлення VR-послуги:
 ```json
 {
   "slug": "vr-arena-120",
-  "title": "VR Arena 120 min",
+  "title": "VR-арена 120 хв",
   "durationMinutes": 120,
   "price": 2200.00,
   "active": true
@@ -721,13 +721,15 @@ Flyway migrations:
 V1__init_booking_schema.sql
 V2__add_booking_status.sql
 V3__add_availability_blocks.sql
+V4__add_manual_payment_fields.sql
+V5__ukrainian_service_titles.sql
 ```
 
-Rules:
+Правила:
 
-- existing migrations should not be edited after production deployment;
-- schema changes should be added as `V3__...sql`, `V4__...sql`, etc.;
-- entity changes and migrations must stay aligned.
+- наявні міграції не редагуються після production deployment;
+- зміни схеми додаються новими файлами `V6__...sql`, `V7__...sql` тощо;
+- зміни entity і міграції мають лишатися узгодженими.
 
 ### `static/`
 

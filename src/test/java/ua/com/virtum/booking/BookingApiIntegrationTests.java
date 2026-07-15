@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "app.payment.card-transfer-enabled=true",
         "app.payment.card-holder=Virtum VR",
         "app.payment.card-number=4444555566667777",
-        "app.payment.card-bank=Test Bank",
+        "app.payment.card-bank=Тестовий банк",
         "app.payment.proofs-dir=target/payment-proofs-test"
 })
 @AutoConfigureMockMvc
@@ -84,7 +84,7 @@ class BookingApiIntegrationTests {
         String payload = """
                 {
                   "serviceSlug": "vr-party-60",
-                  "customerName": "Test Customer",
+                  "customerName": "Тестовий клієнт",
                   "customerPhone": "+380501234567",
                   "customerEmail": "test@example.com",
                   "startsAt": "%s"
@@ -132,7 +132,7 @@ class BookingApiIntegrationTests {
         String payload = """
                 {
                   "serviceSlug": "vr-party-60",
-                  "customerName": "Admin Test Customer",
+                  "customerName": "Тестовий клієнт адмінки",
                   "customerPhone": "+380501234568",
                   "customerEmail": "admin-test@example.com",
                   "startsAt": "%s"
@@ -188,7 +188,7 @@ class BookingApiIntegrationTests {
         String payload = """
                 {
                   "serviceSlug": "vr-party-60",
-                  "customerName": "Card Transfer Customer",
+                  "customerName": "Клієнт з переказом на карту",
                   "customerPhone": "+380501234571",
                   "customerEmail": "card-transfer@example.com",
                   "startsAt": "%s",
@@ -251,7 +251,7 @@ class BookingApiIntegrationTests {
         String createPayload = """
                 {
                   "slug": "admin-managed-120",
-                  "title": "Admin Managed 120 min",
+                  "title": "Адмінська послуга 120 хв",
                   "durationMinutes": 120,
                   "price": 2200.00,
                   "active": true
@@ -282,7 +282,7 @@ class BookingApiIntegrationTests {
         String updatePayload = """
                 {
                   "slug": "admin-managed-120",
-                  "title": "Admin Managed 75 min",
+                  "title": "Адмінська послуга 75 хв",
                   "durationMinutes": 75,
                   "price": 1500.00,
                   "active": false
@@ -294,7 +294,7 @@ class BookingApiIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(updatePayload))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.title").value("Admin Managed 75 min"))
+                .andExpect(jsonPath("$.title").value("Адмінська послуга 75 хв"))
                 .andExpect(jsonPath("$.durationMinutes").value(75))
                 .andExpect(jsonPath("$.currency").value("UAH"))
                 .andExpect(jsonPath("$.active").value(false));
@@ -321,7 +321,7 @@ class BookingApiIntegrationTests {
                 {
                   "startsAt": "%s",
                   "endsAt": "%s",
-                  "reason": "Private event"
+                  "reason": "Приватна подія"
                 }
                 """.formatted(startsAtValue, endsAtValue);
 
@@ -331,7 +331,7 @@ class BookingApiIntegrationTests {
                         .content(blockPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.startsAt").value(startsAtValue))
-                .andExpect(jsonPath("$.reason").value("Private event"))
+                .andExpect(jsonPath("$.reason").value("Приватна подія"))
                 .andReturn();
         Integer blockId = JsonPath.read(createdBlock.getResponse().getContentAsString(), "$.id");
 
@@ -344,7 +344,7 @@ class BookingApiIntegrationTests {
         String bookingPayload = """
                 {
                   "serviceSlug": "vr-party-60",
-                  "customerName": "Blocked Slot Customer",
+                  "customerName": "Клієнт закритого слота",
                   "customerPhone": "+380501234569",
                   "customerEmail": "blocked@example.com",
                   "startsAt": "%s"

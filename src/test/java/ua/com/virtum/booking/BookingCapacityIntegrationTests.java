@@ -56,7 +56,7 @@ class BookingCapacityIntegrationTests {
         return """
                 {
                   "serviceSlug": "vr-party-60",
-                  "customerName": "Capacity Test Customer",
+                  "customerName": "Клієнт для тесту місткості",
                   "customerPhone": "+380501234570",
                   "customerEmail": "%s",
                   "startsAt": "%s"

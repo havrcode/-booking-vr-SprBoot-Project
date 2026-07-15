@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Virtum Booking Admin</title>
+  <title>Адмінка бронювань Virtum</title>
   <link rel="stylesheet" href="/admin/admin.css">
 </head>
 <body>
@@ -14,7 +14,7 @@
         <h1>Адмінка</h1>
       </div>
       <form class="key-form" id="key-form">
-        <label for="api-key">Admin API key</label>
+        <label for="api-key">Ключ Admin API</label>
         <div class="key-row">
           <input id="api-key" name="apiKey" type="password" autocomplete="current-password">
           <button type="submit">Зберегти</button>
@@ -22,7 +22,7 @@
       </form>
     </header>
 
-    <nav class="tabs" aria-label="Admin sections">
+    <nav class="tabs" aria-label="Розділи адмінки">
       <button class="tab-button active" id="booking-tab" type="button" aria-selected="true">Бронювання</button>
       <button class="tab-button" id="services-tab" type="button" aria-selected="false">Послуги</button>
       <button class="tab-button" id="availability-tab" type="button" aria-selected="false">Доступність</button>
@@ -92,7 +92,7 @@
         <input id="service-id" type="hidden">
         <div class="form-grid">
           <label>
-            Slug
+            Код послуги
             <input id="service-slug" type="text" inputmode="latin" autocomplete="off" required maxlength="120" pattern="[a-z0-9]+(-[a-z0-9]+)*">
           </label>
           <label>

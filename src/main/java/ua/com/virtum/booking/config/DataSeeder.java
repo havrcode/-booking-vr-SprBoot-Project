@@ -14,9 +14,9 @@ public class DataSeeder {
     CommandLineRunner seed(VrServiceRepository repository) {
         return args -> {
             if (repository.count() > 0) return;
-            repository.save(service("vr-party-60", "VR Party 60 min", 60, "1200"));
-            repository.save(service("vr-quest-90", "VR Quest 90 min", 90, "1700"));
-            repository.save(service("vr-kids-45", "VR Kids 45 min", 45, "900"));
+            repository.save(service("vr-party-60", "VR-вечірка 60 хв", 60, "1200"));
+            repository.save(service("vr-quest-90", "VR-квест 90 хв", 90, "1700"));
+            repository.save(service("vr-kids-45", "VR для дітей 45 хв", 45, "900"));
         };
     }
 

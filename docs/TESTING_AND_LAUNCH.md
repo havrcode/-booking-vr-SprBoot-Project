@@ -55,7 +55,7 @@ curl -X POST http://localhost:8080/api/v1/bookings \
   -H "Content-Type: application/json" \
   -d '{
     "serviceSlug": "vr-party-60",
-    "customerName": "Test Customer",
+    "customerName": "Тестовий клієнт",
     "customerPhone": "+380501234567",
     "customerEmail": "test@example.com",
     "startsAt": "2026-08-01T14:00:00",
@@ -110,7 +110,7 @@ dev-admin-key
 PAYMENT_CARD_TRANSFER_ENABLED=true
 PAYMENT_CARD_HOLDER=Virtum VR
 PAYMENT_CARD_NUMBER=4444555566667777
-PAYMENT_CARD_BANK=Test Bank
+PAYMENT_CARD_BANK=Тестовий банк
 ```
 
 Після цього:

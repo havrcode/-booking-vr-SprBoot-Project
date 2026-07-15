@@ -57,11 +57,11 @@ class BookingNotificationServiceTests {
         return new AdminBookingResponse(
                 42L,
                 "vr-party-60",
-                "VR Party 60 min",
+                "VR-вечірка 60 хв",
                 60,
                 new BigDecimal("1200.00"),
                 "UAH",
-                "Test Customer",
+                "Тестовий клієнт",
                 "+380501234567",
                 "test@example.com",
                 LocalDateTime.of(2026, 7, 1, 14, 0),
