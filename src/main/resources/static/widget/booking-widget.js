@@ -588,11 +588,18 @@
   }
 
   function formatPrice(price) {
-    return new Intl.NumberFormat("uk-UA", {
-      style: "currency",
-      currency: "UAH",
-      maximumFractionDigits: 0,
-    }).format(price);
+    const amount = Number(price);
+
+    if (!Number.isFinite(amount)) {
+      return "";
+    }
+
+    const fractionDigits = Number.isInteger(amount) ? 0 : 2;
+    const formatted = new Intl.NumberFormat("uk-UA", {
+      maximumFractionDigits: fractionDigits,
+    }).format(amount);
+
+    return `${formatted} грн`;
   }
 
   function formatCardNumber(value) {

@@ -420,7 +420,7 @@ Payload для створення або оновлення VR-послуги:
 - `slug` тільки lowercase letters, numbers і hyphens;
 - `title` не порожній, до 255 символів;
 - `durationMinutes` від 15 до 480;
-- `price` більше 0, до 2 знаків після коми.
+- `price` більше 0, до 2 знаків після коми, завжди у гривнях.
 - `active` обовʼязковий boolean.
 
 ### `SaveAvailabilityBlockRequest.java`
@@ -450,6 +450,7 @@ Response для адмінки з повними даними послуги:
 - title;
 - durationMinutes;
 - price;
+- currency (`UAH`);
 - active.
 
 ## `entity/`
@@ -477,7 +478,7 @@ vr_services
 - `slug` - стабільний код для API;
 - `title` - назва;
 - `durationMinutes` - тривалість;
-- `price` - ціна;
+- `price` - ціна у гривнях;
 - `active` - чи показувати на сайті.
 
 ### `Booking.java`

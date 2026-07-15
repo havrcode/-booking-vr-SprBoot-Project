@@ -8,5 +8,6 @@ public record AdminVrServiceResponse(
         String title,
         Integer durationMinutes,
         BigDecimal price,
+        String currency,
         boolean active
 ) {}

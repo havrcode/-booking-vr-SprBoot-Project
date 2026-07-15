@@ -361,6 +361,7 @@ public class BookingService {
                 service.getTitle(),
                 service.getDurationMinutes(),
                 service.getPrice(),
+                VrService.CURRENCY,
                 service.isActive()
         );
     }
@@ -372,6 +373,7 @@ public class BookingService {
                 b.getService().getTitle(),
                 b.getService().getDurationMinutes(),
                 b.getService().getPrice(),
+                VrService.CURRENCY,
                 b.getCustomerName(),
                 b.getCustomerPhone(),
                 b.getCustomerEmail(),
@@ -398,6 +400,7 @@ public class BookingService {
                 b.getService().getTitle(),
                 b.getService().getDurationMinutes(),
                 b.getService().getPrice(),
+                VrService.CURRENCY,
                 b.getCustomerName(),
                 b.getCustomerPhone(),
                 b.getCustomerEmail(),
