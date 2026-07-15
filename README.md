@@ -34,7 +34,20 @@ docs/TESTING_AND_LAUNCH.md
 
 ## API
 ### `GET /api/v1/services`
-Список активних послуг.
+Список активних послуг. `price` завжди у гривнях, `currency` завжди `UAH`.
+
+```json
+[
+  {
+    "slug": "vr-party-60",
+    "title": "VR Party 60 min",
+    "durationMinutes": 60,
+    "price": 1200.00,
+    "currency": "UAH",
+    "active": true
+  }
+]
+```
 
 ### `GET /api/v1/booking-settings`
 Публічні налаштування бронювання:
@@ -277,6 +290,8 @@ PAID
 
 ### `GET /api/v1/admin/services`
 Повертає всі послуги для адмінки, включно з неактивними.
+
+Ціни в API зберігаються і повертаються у гривнях. У response для послуг і бронювань додатково повертається `currency: "UAH"`.
 
 ### `POST /api/v1/admin/services`
 Створює нову VR-послугу.

@@ -43,7 +43,8 @@ class BookingApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()", greaterThan(0)))
                 .andExpect(jsonPath("$[0].slug").exists())
-                .andExpect(jsonPath("$[0].title").exists());
+                .andExpect(jsonPath("$[0].title").exists())
+                .andExpect(jsonPath("$[0].currency").value("UAH"));
     }
 
     @Test
@@ -96,6 +97,7 @@ class BookingApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.serviceSlug").value("vr-party-60"))
                 .andExpect(jsonPath("$.startsAt").value(startsAtValue))
+                .andExpect(jsonPath("$.currency").value("UAH"))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.paymentMethod").value("PAY_AT_CLUB"))
                 .andExpect(jsonPath("$.paymentStatus").value("UNPAID"));
@@ -155,6 +157,7 @@ class BookingApiIntegrationTests {
                         .param("to", dateValue))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(bookingId))
+                .andExpect(jsonPath("$[0].currency").value("UAH"))
                 .andExpect(jsonPath("$[0].status").value("CONFIRMED"));
 
         mockMvc.perform(patch("/api/v1/admin/bookings/{id}/status", bookingId)
@@ -264,6 +267,7 @@ class BookingApiIntegrationTests {
                         .content(createPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.slug").value("admin-managed-120"))
+                .andExpect(jsonPath("$.currency").value("UAH"))
                 .andExpect(jsonPath("$.active").value(true))
                 .andReturn();
         Integer serviceId = JsonPath.read(created.getResponse().getContentAsString(), "$.id");
@@ -292,6 +296,7 @@ class BookingApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("Admin Managed 75 min"))
                 .andExpect(jsonPath("$.durationMinutes").value(75))
+                .andExpect(jsonPath("$.currency").value("UAH"))
                 .andExpect(jsonPath("$.active").value(false));
 
         mockMvc.perform(get("/api/v1/services"))

@@ -6,6 +6,8 @@ import java.math.BigDecimal;
 @Entity
 @Table(name = "vr_services")
 public class VrService {
+    public static final String CURRENCY = "UAH";
+
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     @Column(nullable = false, unique = true, length = 120)
@@ -27,6 +29,8 @@ public class VrService {
     public void setDurationMinutes(Integer durationMinutes) { this.durationMinutes = durationMinutes; }
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
+    @Transient
+    public String getCurrency() { return CURRENCY; }
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
 }

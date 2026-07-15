@@ -88,6 +88,21 @@ export function toLocalIsoDateTime(date, time) {
   return `${date}T${time.length === 5 ? `${time}:00` : time}`;
 }
 
+export function formatPriceUah(price) {
+  const amount = Number(price);
+
+  if (!Number.isFinite(amount)) {
+    return "";
+  }
+
+  const fractionDigits = Number.isInteger(amount) ? 0 : 2;
+  const formatted = new Intl.NumberFormat("uk-UA", {
+    maximumFractionDigits: fractionDigits,
+  }).format(amount);
+
+  return `${formatted} грн`;
+}
+
 export function readBookingForm(form) {
   const data = new FormData(form);
 
