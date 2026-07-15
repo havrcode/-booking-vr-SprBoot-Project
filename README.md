@@ -40,7 +40,7 @@ docs/TESTING_AND_LAUNCH.md
 [
   {
     "slug": "vr-party-60",
-    "title": "VR Party 60 min",
+    "title": "VR-вечірка 60 хв",
     "durationMinutes": 60,
     "price": 1200.00,
     "currency": "UAH",
@@ -299,7 +299,7 @@ PAID
 ```json
 {
   "slug": "vr-arena-120",
-  "title": "VR Arena 120 min",
+  "title": "VR-арена 120 хв",
   "durationMinutes": 120,
   "price": 2200.00,
   "active": true

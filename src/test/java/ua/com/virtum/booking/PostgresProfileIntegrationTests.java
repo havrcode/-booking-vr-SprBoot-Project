@@ -71,7 +71,7 @@ class PostgresProfileIntegrationTests {
         String payload = """
                 {
                   "serviceSlug": "vr-party-60",
-                  "customerName": "Postgres Test Customer",
+                  "customerName": "Тестовий клієнт Postgres",
                   "customerPhone": "+380501234569",
                   "customerEmail": "postgres-test@example.com",
                   "startsAt": "%s"
