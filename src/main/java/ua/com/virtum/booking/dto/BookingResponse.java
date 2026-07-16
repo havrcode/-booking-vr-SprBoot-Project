@@ -17,6 +17,7 @@ public record BookingResponse(
         String customerName,
         String customerPhone,
         String customerEmail,
+        String customerComment,
         LocalDateTime startsAt,
         LocalDateTime endsAt,
         BookingStatus status,

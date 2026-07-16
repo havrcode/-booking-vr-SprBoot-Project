@@ -6,7 +6,7 @@
 - REST API для отримання послуг, створення бронювання, перегляду бронювань на день.
 - Валідація payload та помилки у JSON форматі.
 - Захист від переповнення слотів з configurable capacity через `MAX_CONCURRENT_BOOKINGS`.
-- Public API для зайнятих слотів не віддає імʼя, телефон або email клієнта.
+- Public API для зайнятих слотів не віддає імʼя, телефон, email або коментар клієнта.
 - Початкові дані з VR-послугами.
 - CORS налаштовано через `app.cors.allowed-origins`.
 - Flyway міграції для схеми бази даних.
@@ -90,12 +90,14 @@ docs/TESTING_AND_LAUNCH.md
   "serviceSlug": "vr-party-60",
   "customerName": "Іван Петренко",
   "customerPhone": "+380501234567",
-  "customerEmail": "ivan@example.com",
+  "customerComment": "День народження, будемо з дітьми",
   "startsAt": "2026-05-20T09:30:00",
   "helmetsCount": 1,
   "paymentMethod": "PAY_AT_CLUB"
 }
 ```
+
+`customerEmail` можна передати додатково, але для публічної форми він не обовʼязковий.
 
 Підтримувані `paymentMethod`:
 
@@ -254,7 +256,7 @@ https://booking-api.virtum-vr.com.ua/widget/booking-widget.js
 serviceSlug
 customerName
 customerPhone
-customerEmail
+customerComment
 date
 time
 helmetsCount

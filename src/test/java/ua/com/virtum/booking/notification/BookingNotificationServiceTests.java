@@ -65,6 +65,7 @@ class BookingNotificationServiceTests {
                 "Тестовий клієнт",
                 "+380501234567",
                 "test@example.com",
+                "Коментар клієнта",
                 LocalDateTime.of(2026, 7, 1, 14, 0),
                 LocalDateTime.of(2026, 7, 1, 15, 0),
                 BookingStatus.CANCELLED,

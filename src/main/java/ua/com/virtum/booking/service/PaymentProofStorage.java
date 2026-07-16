@@ -46,7 +46,7 @@ public class PaymentProofStorage {
             Path target = root.resolve(filename).normalize();
 
             if (!target.startsWith(root)) {
-                throw new BadRequestException("Invalid payment proof file path.");
+                throw new BadRequestException("Не вдалося завантажити скрін оплати.");
             }
 
             file.transferTo(target);
@@ -56,7 +56,7 @@ public class PaymentProofStorage {
                     file.getContentType()
             );
         } catch (IOException ex) {
-            throw new BadRequestException("Could not save payment proof file.");
+            throw new BadRequestException("Не вдалося зберегти скрін оплати. Спробуйте ще раз.");
         }
     }
 
@@ -77,16 +77,16 @@ public class PaymentProofStorage {
 
     private void validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new BadRequestException("Payment proof file is required.");
+            throw new BadRequestException("Додайте скрін оплати або оберіть оплату в клубі.");
         }
 
         if (file.getSize() > paymentProperties.getMaxProofSizeBytes()) {
-            throw new BadRequestException("Payment proof file is too large.");
+            throw new BadRequestException("Скрін оплати завеликий. Додайте зображення до 8 МБ.");
         }
 
         String contentType = file.getContentType();
         if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType.toLowerCase(Locale.ROOT))) {
-            throw new BadRequestException("Payment proof must be an image file.");
+            throw new BadRequestException("Скрін оплати має бути зображенням PNG, JPG, WEBP або HEIC.");
         }
     }
 

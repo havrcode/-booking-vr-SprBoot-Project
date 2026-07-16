@@ -152,6 +152,7 @@ public class BookingService {
         LocalDateTime endsAt = startsAt.plusMinutes(service.getDurationMinutes());
         int helmetsCount = resolveHelmetsCount(request.helmetsCount());
 
+        validateFutureSlot(startsAt);
         validateWithinBookingSchedule(startsAt, endsAt);
 
         // Only confirmed bookings block capacity. Cancelled bookings keep history,
@@ -163,21 +164,22 @@ public class BookingService {
         );
 
         if (overlappingHelmets + helmetsCount > bookingProperties.getMaxConcurrentBookings()) {
-            throw new ConflictException("This time slot is fully booked. Please choose another one.");
+            throw new ConflictException("Цей час уже зайнятий. Оберіть інший вільний слот.");
         }
 
         if (!availabilityBlockRepository.findByStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(
                 endsAt,
                 startsAt
         ).isEmpty()) {
-            throw new ConflictException("This time slot is closed by administrator. Please choose another one.");
+            throw new ConflictException("Цей час закритий адміністратором. Оберіть інший слот.");
         }
 
         Booking booking = new Booking();
         booking.setService(service);
         booking.setCustomerName(request.customerName());
         booking.setCustomerPhone(request.customerPhone());
-        booking.setCustomerEmail(request.customerEmail());
+        booking.setCustomerEmail(blankToNull(request.customerEmail()));
+        booking.setCustomerComment(blankToNull(request.customerComment()));
         booking.setStartsAt(startsAt);
         booking.setEndsAt(endsAt);
         booking.setHelmetsCount(helmetsCount);
@@ -196,11 +198,11 @@ public class BookingService {
                 .orElseThrow(() -> new NotFoundException("Booking not found: " + id));
 
         if (token == null || token.isBlank() || !token.equals(booking.getPaymentUploadToken())) {
-            throw new BadRequestException("Payment proof upload token is invalid.");
+            throw new BadRequestException("Посилання для завантаження скріна оплати недійсне.");
         }
 
         if (booking.getStatus() == BookingStatus.CANCELLED) {
-            throw new BadRequestException("Cannot upload payment proof for cancelled booking.");
+            throw new BadRequestException("Не можна додати скрін оплати до скасованого бронювання.");
         }
 
         PaymentProofStorage.StoredPaymentProof storedProof = paymentProofStorage.store(booking, file);
@@ -386,11 +388,11 @@ public class BookingService {
         PaymentMethod effectivePaymentMethod = paymentMethod == null ? PaymentMethod.PAY_AT_CLUB : paymentMethod;
 
         if (effectivePaymentMethod == PaymentMethod.PAY_AT_CLUB && !paymentProperties.isPayAtClubEnabled()) {
-            throw new BadRequestException("Pay at club is not available.");
+            throw new BadRequestException("Оплата в клубі зараз недоступна.");
         }
 
         if (effectivePaymentMethod == PaymentMethod.CARD_TRANSFER && !paymentProperties.isCardTransferEnabled()) {
-            throw new BadRequestException("Card transfer is not available.");
+            throw new BadRequestException("Переказ на карту зараз недоступний.");
         }
 
         return effectivePaymentMethod;
@@ -400,11 +402,11 @@ public class BookingService {
         int effectiveHelmetsCount = helmetsCount == null ? 1 : helmetsCount;
 
         if (effectiveHelmetsCount < 1) {
-            throw new BadRequestException("Field 'helmetsCount' must be at least 1.");
+            throw new BadRequestException("Оберіть хоча б 1 шолом.");
         }
 
         if (effectiveHelmetsCount > bookingProperties.getMaxConcurrentBookings()) {
-            throw new BadRequestException("Cannot book more helmets than available.");
+            throw new BadRequestException("Не можна забронювати більше шоломів, ніж доступно в клубі.");
         }
 
         return effectiveHelmetsCount;
@@ -412,7 +414,7 @@ public class BookingService {
 
     private void validateWithinBookingSchedule(LocalDateTime startsAt, LocalDateTime endsAt) {
         if (!startsAt.toLocalDate().equals(endsAt.toLocalDate())) {
-            throw new ConflictException("This time slot is outside working hours. Please choose another one.");
+            throw new ConflictException("Цей час поза графіком роботи. Оберіть інший слот.");
         }
 
         LocalTime startTime = startsAt.toLocalTime();
@@ -421,16 +423,26 @@ public class BookingService {
         LocalTime closeTime = bookingProperties.getCloseTime();
 
         if (startTime.isBefore(openTime) || endTime.isAfter(closeTime)) {
-            throw new ConflictException("This time slot is outside working hours. Please choose another one.");
+            throw new ConflictException("Цей час поза графіком роботи. Оберіть інший слот.");
         }
 
         int minutesFromOpen = toMinutes(startTime) - toMinutes(openTime);
         if (minutesFromOpen % bookingProperties.getSlotStepMinutes() != 0) {
-            throw new ConflictException("This time slot is not aligned with booking slot step. Please choose another one.");
+            throw new ConflictException("Оберіть час із кнопок доступних слотів.");
         }
 
         if (overlapsBreak(startTime, endTime)) {
-            throw new ConflictException("This time slot is closed for lunch break. Please choose another one.");
+            throw new ConflictException("На цей час обідня пауза. Оберіть інший слот.");
+        }
+    }
+
+    private void validateFutureSlot(LocalDateTime startsAt) {
+        LocalDateTime now = LocalDateTime.now();
+
+        if (!startsAt.isAfter(now)) {
+            throw new ConflictException("Цей час уже неактивний для бронювання, бо зараз "
+                    + now.format(TIME_FORMATTER)
+                    + ". Оберіть майбутній слот із календаря.");
         }
     }
 
@@ -558,6 +570,7 @@ public class BookingService {
                 b.getCustomerName(),
                 b.getCustomerPhone(),
                 b.getCustomerEmail(),
+                b.getCustomerComment(),
                 b.getStartsAt(),
                 b.getEndsAt(),
                 b.getStatus(),
@@ -587,6 +600,7 @@ public class BookingService {
                 b.getCustomerName(),
                 b.getCustomerPhone(),
                 b.getCustomerEmail(),
+                b.getCustomerComment(),
                 b.getStartsAt(),
                 b.getEndsAt(),
                 b.getStatus(),
@@ -610,6 +624,14 @@ public class BookingService {
     private boolean isWeekend(LocalDate date) {
         DayOfWeek dayOfWeek = date.getDayOfWeek();
         return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
     }
 
     private PaymentProofResponse toPaymentProofResponse(Booking b) {
@@ -641,14 +663,6 @@ public class BookingService {
                 null,
                 null
         );
-    }
-
-    private String blankToNull(String value) {
-        if (value == null || value.isBlank()) {
-            return null;
-        }
-
-        return value.trim();
     }
 
     private String formatTime(LocalTime time) {

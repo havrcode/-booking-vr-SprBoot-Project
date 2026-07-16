@@ -356,7 +356,7 @@ Payload для створення бронювання:
   "serviceSlug": "vr-party-60",
   "customerName": "Іван Петренко",
   "customerPhone": "+380501234567",
-  "customerEmail": "ivan@example.com",
+  "customerComment": "Подзвоніть перед бронюванням",
   "startsAt": "2026-05-20T09:30:00",
   "helmetsCount": 1
 }
@@ -367,8 +367,9 @@ Payload для створення бронювання:
 - `serviceSlug` не порожній;
 - `customerName` 2-120 символів;
 - `customerPhone` має простий phone pattern;
-- `customerEmail` має email format;
-- `startsAt` має бути в майбутньому.
+- `customerEmail` optional, якщо переданий - має email format;
+- `customerComment` optional, до 500 символів;
+- `startsAt` перевіряється backend-ом і має бути майбутнім активним слотом.
 - `helmetsCount` optional, за замовчуванням `1`, максимум дорівнює `MAX_CONCURRENT_BOOKINGS`.
 
 ### `BookingResponse.java`
@@ -494,7 +495,7 @@ bookings
 Описує бронювання:
 
 - service;
-- customer name/phone/email;
+- customer name/phone/email/comment;
 - startsAt;
 - endsAt;
 - status;

@@ -192,6 +192,57 @@ class BookingApiIntegrationTests {
     }
 
     @Test
+    void rejectsStalePastSlotWithUkrainianMessage() throws Exception {
+        LocalDateTime startsAt = LocalDate.now()
+                .minusDays(1)
+                .atTime(9, 30);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        String payload = """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Клієнт зі старою сторінкою",
+                  "customerPhone": "+380501234588",
+                  "startsAt": "%s"
+                }
+                """.formatted(startsAtValue);
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("уже неактивний")));
+    }
+
+    @Test
+    void createsBookingWithOptionalCommentAndWithoutEmail() throws Exception {
+        LocalDateTime startsAt = LocalDateTime.now()
+                .plusDays(36)
+                .withHour(17)
+                .withMinute(30)
+                .withSecond(0)
+                .withNano(0);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        String payload = """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Клієнт без email",
+                  "customerPhone": "+380501234589",
+                  "customerComment": "Подзвоніть перед бронюванням",
+                  "startsAt": "%s"
+                }
+                """.formatted(startsAtValue);
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customerName").value("Клієнт без email"))
+                .andExpect(jsonPath("$.customerComment").value("Подзвоніть перед бронюванням"));
+    }
+
+    @Test
     void rejectsLunchBreakAndClosedHours() throws Exception {
         LocalDateTime lunchStartsAt = LocalDateTime.now()
                 .plusDays(17)

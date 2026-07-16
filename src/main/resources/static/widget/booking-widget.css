@@ -130,7 +130,8 @@
 }
 
 .virtum-booking-form input,
-.virtum-booking-form select {
+.virtum-booking-form select,
+.virtum-booking-form textarea {
   width: 100%;
   min-height: 46px;
   border: 1px solid rgba(102, 238, 255, 0.32);
@@ -139,6 +140,17 @@
   background: #0f1428;
   color: #ffffff;
   font: inherit;
+}
+
+.virtum-booking-form textarea {
+  min-height: 86px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.virtum-booking-muted {
+  color: #7f8ba0;
+  font-weight: 700;
 }
 
 .virtum-booking-form input[type="file"] {
@@ -164,6 +176,7 @@
 
 .virtum-booking-form input:focus,
 .virtum-booking-form select:focus,
+.virtum-booking-form textarea:focus,
 .virtum-booking-close:focus,
 .virtum-booking-submit:focus,
 .virtum-booking-calendar-day:focus,
