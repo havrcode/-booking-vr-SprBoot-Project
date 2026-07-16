@@ -45,6 +45,9 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$[0].slug").exists())
                 .andExpect(jsonPath("$[0].title").exists())
                 .andExpect(jsonPath("$[?(@.slug == 'vr-arena-120')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-party-60')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-quest-90')]", hasSize(0)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-kids-45')]", hasSize(0)))
                 .andExpect(jsonPath("$[0].currency").value("UAH"));
     }
 
