@@ -94,6 +94,7 @@
 
 .virtum-booking-form label,
 .virtum-booking-day-field,
+.virtum-booking-service-field,
 .virtum-booking-time-field {
   display: grid;
   gap: 8px;
@@ -103,12 +104,29 @@
 }
 
 .virtum-booking-day-field,
+.virtum-booking-service-field,
 .virtum-booking-time-field {
   grid-column: 1 / -1;
 }
 
 .virtum-booking-field-label {
   color: #b9c8d9;
+}
+
+.virtum-booking-step-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.virtum-booking-hidden-select {
+  position: absolute;
+  width: 1px !important;
+  height: 1px !important;
+  min-height: 1px !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .virtum-booking-form input,
@@ -149,6 +167,7 @@
 .virtum-booking-close:focus,
 .virtum-booking-submit:focus,
 .virtum-booking-calendar-day:focus,
+.virtum-booking-service-option:focus,
 .virtum-booking-time-slot:focus {
   outline: 2px solid #ffdd45;
   outline-offset: 2px;
@@ -156,8 +175,48 @@
 
 .virtum-booking-day-calendar {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  gap: 12px;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.virtum-booking-calendar-nav {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.virtum-booking-calendar-nav h3 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 20px;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.virtum-booking-calendar-nav button {
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: #36d9ff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+}
+
+.virtum-booking-calendar-nav button:first-child {
+  text-align: left;
+}
+
+.virtum-booking-calendar-nav button:last-child {
+  text-align: right;
+}
+
+.virtum-booking-calendar-nav button:disabled {
+  color: #516073;
+  cursor: not-allowed;
 }
 
 .virtum-booking-calendar-month {
@@ -190,16 +249,17 @@
 
 .virtum-booking-calendar-day,
 .virtum-booking-calendar-pad {
-  min-height: 54px;
-  border-radius: 6px;
+  min-height: 74px;
+  border-radius: 8px;
 }
 
 .virtum-booking-calendar-day {
   display: grid;
-  gap: 2px;
-  border: 1px solid rgba(102, 238, 255, 0.28);
-  padding: 7px 5px;
-  background: #10172d;
+  align-content: space-between;
+  gap: 6px;
+  border: 1px solid rgba(102, 238, 255, 0.18);
+  padding: 11px 8px 9px;
+  background: #0e2135;
   color: #ffffff;
   cursor: pointer;
   font: inherit;
@@ -208,31 +268,38 @@
 
 .virtum-booking-calendar-day:hover {
   border-color: rgba(255, 221, 69, 0.72);
-  background: #15203b;
+  background: #14304b;
 }
 
 .virtum-booking-calendar-day span {
-  font-size: 15px;
+  font-size: 25px;
   font-weight: 900;
+  line-height: 1;
 }
 
 .virtum-booking-calendar-day small {
   color: #70f1ff;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
 .virtum-booking-calendar-day.is-selected {
-  border-color: #ffdd45;
-  background: #231f13;
-  box-shadow: inset 0 0 0 1px #ffdd45;
+  border-color: #ff6868;
+  background: #df595e;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.virtum-booking-calendar-day.is-selected small {
+  color: #ffffff;
 }
 
 .virtum-booking-calendar-day.is-disabled,
 .virtum-booking-calendar-day:disabled {
   border-color: rgba(255, 255, 255, 0.1);
-  background: #0c1020;
+  background: #0b1324;
   color: #697588;
   cursor: not-allowed;
   opacity: 0.72;
@@ -241,6 +308,64 @@
 .virtum-booking-calendar-day.is-disabled small,
 .virtum-booking-calendar-day:disabled small {
   color: #7d8798;
+}
+
+.virtum-booking-service-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.virtum-booking-service-option {
+  display: grid;
+  gap: 6px;
+  min-height: 96px;
+  border: 1px solid rgba(102, 238, 255, 0.28);
+  border-radius: 6px;
+  padding: 12px;
+  background: #10172d;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.virtum-booking-service-option:hover {
+  border-color: rgba(255, 221, 69, 0.72);
+  background: #15203b;
+}
+
+.virtum-booking-service-option span {
+  font-weight: 900;
+}
+
+.virtum-booking-service-option strong {
+  color: #ffdd45;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.virtum-booking-service-option small {
+  color: #70f1ff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.25;
+}
+
+.virtum-booking-service-option.is-selected {
+  border-color: #ffdd45;
+  background: #231f13;
+  box-shadow: inset 0 0 0 1px #ffdd45;
+}
+
+.virtum-booking-price-hint {
+  margin: 0;
+  border-left: 3px solid #ffdd45;
+  padding: 8px 10px;
+  background: rgba(255, 221, 69, 0.08);
+  color: #dbe8f5;
+  font-size: 13px;
+  line-height: 1.35;
 }
 
 .virtum-booking-time-grid {
@@ -354,9 +479,12 @@
 
 @media (max-width: 760px) {
   .virtum-booking-dialog {
-    width: min(100vw - 20px, 920px);
-    max-height: calc(100vh - 20px);
-    margin: 10px auto;
+    width: 100vw;
+    max-height: 100dvh;
+    min-height: 100dvh;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
   }
 
   .virtum-booking-header,
@@ -374,11 +502,64 @@
     grid-template-columns: 1fr;
   }
 
-  .virtum-booking-time-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .virtum-booking-calendar-day,
+  .virtum-booking-calendar-pad {
+    min-height: 58px;
   }
 
-  .virtum-booking-day-calendar {
+  .virtum-booking-calendar-day span {
+    font-size: 20px;
+  }
+
+  .virtum-booking-service-options,
+  .virtum-booking-time-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  .virtum-booking-header,
+  .virtum-booking-form {
+    padding: 12px;
+  }
+
+  .virtum-booking-header h2 {
+    font-size: 30px;
+  }
+
+  .virtum-booking-calendar-nav {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    gap: 4px;
+  }
+
+  .virtum-booking-calendar-nav h3 {
+    font-size: 17px;
+  }
+
+  .virtum-booking-calendar-nav button {
+    min-height: 34px;
+    font-size: 12px;
+  }
+
+  .virtum-booking-calendar-weekdays,
+  .virtum-booking-calendar-grid {
+    gap: 4px;
+  }
+
+  .virtum-booking-calendar-day,
+  .virtum-booking-calendar-pad {
+    min-height: 50px;
+  }
+
+  .virtum-booking-calendar-day {
+    padding: 7px 4px 6px;
+  }
+
+  .virtum-booking-calendar-day span {
+    font-size: 18px;
+  }
+
+  .virtum-booking-calendar-day small {
+    font-size: 9px;
   }
 }

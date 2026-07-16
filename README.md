@@ -36,6 +36,7 @@ docs/TESTING_AND_LAUNCH.md
 ## API
 ### `GET /api/v1/services`
 Список активних послуг. `price` завжди у гривнях, `currency` завжди `UAH`.
+Для публічного бронювання базовий прайс: пн-пт `400 грн/год`, сб-нд `500 грн/год`.
 
 ```json
 [
@@ -43,7 +44,15 @@ docs/TESTING_AND_LAUNCH.md
     "slug": "vr-party-60",
     "title": "VR-вечірка 60 хв",
     "durationMinutes": 60,
-    "price": 1200.00,
+    "price": 400.00,
+    "currency": "UAH",
+    "active": true
+  },
+  {
+    "slug": "vr-sprint-120",
+    "title": "VR-спрінт 120 хв",
+    "durationMinutes": 120,
+    "price": 800.00,
     "currency": "UAH",
     "active": true
   }
@@ -335,10 +344,10 @@ PAID
 
 ```json
 {
-  "slug": "vr-arena-120",
-  "title": "VR-арена 120 хв",
+  "slug": "vr-sprint-120",
+  "title": "VR-спрінт 120 хв",
   "durationMinutes": 120,
-  "price": 2200.00,
+  "price": 800.00,
   "active": true
 }
 ```

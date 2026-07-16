@@ -32,6 +32,9 @@ import ua.com.virtum.booking.repository.AvailabilityBlockRepository;
 import ua.com.virtum.booking.repository.BookingRepository;
 import ua.com.virtum.booking.repository.VrServiceRepository;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -43,6 +46,8 @@ import java.util.UUID;
 @Service
 public class BookingService {
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+    private static final BigDecimal WEEKDAY_HOURLY_PRICE = new BigDecimal("400.00");
+    private static final BigDecimal WEEKEND_HOURLY_PRICE = new BigDecimal("500.00");
 
     private final BookingRepository bookingRepository;
     private final VrServiceRepository vrServiceRepository;
@@ -548,7 +553,7 @@ public class BookingService {
                 b.getService().getTitle(),
                 b.getService().getDurationMinutes(),
                 b.getHelmetsCount(),
-                b.getService().getPrice(),
+                bookingPrice(b),
                 VrService.CURRENCY,
                 b.getCustomerName(),
                 b.getCustomerPhone(),
@@ -577,7 +582,7 @@ public class BookingService {
                 b.getService().getTitle(),
                 b.getService().getDurationMinutes(),
                 b.getHelmetsCount(),
-                b.getService().getPrice(),
+                bookingPrice(b),
                 VrService.CURRENCY,
                 b.getCustomerName(),
                 b.getCustomerPhone(),
@@ -590,6 +595,21 @@ public class BookingService {
                 toPaymentProofResponse(b),
                 b.getCreatedAt()
         );
+    }
+
+    private BigDecimal bookingPrice(Booking booking) {
+        BigDecimal hourlyPrice = isWeekend(booking.getStartsAt().toLocalDate())
+                ? WEEKEND_HOURLY_PRICE
+                : WEEKDAY_HOURLY_PRICE;
+
+        return hourlyPrice
+                .multiply(BigDecimal.valueOf(booking.getService().getDurationMinutes()))
+                .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+    }
+
+    private boolean isWeekend(LocalDate date) {
+        DayOfWeek dayOfWeek = date.getDayOfWeek();
+        return dayOfWeek == DayOfWeek.SATURDAY || dayOfWeek == DayOfWeek.SUNDAY;
     }
 
     private PaymentProofResponse toPaymentProofResponse(Booking b) {

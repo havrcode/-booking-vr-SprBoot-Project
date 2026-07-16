@@ -10,8 +10,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
 
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
@@ -44,8 +47,11 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$.length()", greaterThan(0)))
                 .andExpect(jsonPath("$[0].slug").exists())
                 .andExpect(jsonPath("$[0].title").exists())
-                .andExpect(jsonPath("$[?(@.slug == 'vr-arena-120')]", hasSize(1)))
                 .andExpect(jsonPath("$[?(@.slug == 'vr-party-60')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-party-60' && @.price == 400.00)]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-sprint-120')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-sprint-120' && @.price == 800.00)]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-arena-120')]", hasSize(0)))
                 .andExpect(jsonPath("$[?(@.slug == 'vr-quest-90')]", hasSize(0)))
                 .andExpect(jsonPath("$[?(@.slug == 'vr-kids-45')]", hasSize(0)))
                 .andExpect(jsonPath("$[0].currency").value("UAH"));
@@ -154,6 +160,35 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$[0].date").value(dateValue))
                 .andExpect(jsonPath("$[0].available").value(true))
                 .andExpect(jsonPath("$[0].availableSlots").exists());
+    }
+
+    @Test
+    void pricesWeekendSprintBookingByHourlyWeekendRate() throws Exception {
+        LocalDateTime startsAt = LocalDate.now()
+                .plusWeeks(8)
+                .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
+                .atTime(9, 30);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        String payload = """
+                {
+                  "serviceSlug": "vr-sprint-120",
+                  "customerName": "Клієнт вихідного дня",
+                  "customerPhone": "+380501234577",
+                  "customerEmail": "weekend-price@example.com",
+                  "startsAt": "%s"
+                }
+                """.formatted(startsAtValue);
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.serviceSlug").value("vr-sprint-120"))
+                .andExpect(jsonPath("$.serviceTitle").value("VR-спрінт 120 хв"))
+                .andExpect(jsonPath("$.durationMinutes").value(120))
+                .andExpect(jsonPath("$.price").value(1000.00))
+                .andExpect(jsonPath("$.currency").value("UAH"));
     }
 
     @Test
