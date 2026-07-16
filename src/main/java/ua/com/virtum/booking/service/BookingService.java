@@ -9,6 +9,7 @@ import ua.com.virtum.booking.dto.AdminBookingResponse;
 import ua.com.virtum.booking.dto.AdminVrServiceResponse;
 import ua.com.virtum.booking.dto.AvailabilityBlockResponse;
 import ua.com.virtum.booking.dto.BookingResponse;
+import ua.com.virtum.booking.dto.BookingScheduleResponse;
 import ua.com.virtum.booking.dto.BookingSettingsResponse;
 import ua.com.virtum.booking.dto.BookingSlotResponse;
 import ua.com.virtum.booking.dto.CreateBookingRequest;
@@ -32,12 +33,16 @@ import ua.com.virtum.booking.repository.VrServiceRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
 @Service
 public class BookingService {
+    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
     private final BookingRepository bookingRepository;
     private final VrServiceRepository vrServiceRepository;
     private final AvailabilityBlockRepository availabilityBlockRepository;
@@ -71,7 +76,18 @@ public class BookingService {
     public BookingSettingsResponse bookingSettings() {
         return new BookingSettingsResponse(
                 bookingProperties.getMaxConcurrentBookings(),
-                paymentSettings()
+                paymentSettings(),
+                bookingSchedule()
+        );
+    }
+
+    public BookingScheduleResponse bookingSchedule() {
+        return new BookingScheduleResponse(
+                formatTime(bookingProperties.getOpenTime()),
+                formatTime(bookingProperties.getCloseTime()),
+                formatTime(bookingProperties.getBreakStart()),
+                formatTime(bookingProperties.getBreakEnd()),
+                bookingProperties.getSlotStepMinutes()
         );
     }
 
@@ -128,6 +144,8 @@ public class BookingService {
 
         LocalDateTime startsAt = request.startsAt();
         LocalDateTime endsAt = startsAt.plusMinutes(service.getDurationMinutes());
+
+        validateWithinBookingSchedule(startsAt, endsAt);
 
         // Only confirmed bookings block capacity. Cancelled bookings keep history,
         // but their time slot can be booked again.
@@ -329,6 +347,36 @@ public class BookingService {
         return effectivePaymentMethod;
     }
 
+    private void validateWithinBookingSchedule(LocalDateTime startsAt, LocalDateTime endsAt) {
+        if (!startsAt.toLocalDate().equals(endsAt.toLocalDate())) {
+            throw new ConflictException("This time slot is outside working hours. Please choose another one.");
+        }
+
+        LocalTime startTime = startsAt.toLocalTime();
+        LocalTime endTime = endsAt.toLocalTime();
+        LocalTime openTime = bookingProperties.getOpenTime();
+        LocalTime closeTime = bookingProperties.getCloseTime();
+
+        if (startTime.isBefore(openTime) || endTime.isAfter(closeTime)) {
+            throw new ConflictException("This time slot is outside working hours. Please choose another one.");
+        }
+
+        if (overlapsBreak(startTime, endTime)) {
+            throw new ConflictException("This time slot is closed for lunch break. Please choose another one.");
+        }
+    }
+
+    private boolean overlapsBreak(LocalTime startTime, LocalTime endTime) {
+        LocalTime breakStart = bookingProperties.getBreakStart();
+        LocalTime breakEnd = bookingProperties.getBreakEnd();
+
+        if (!breakEnd.isAfter(breakStart)) {
+            return false;
+        }
+
+        return startTime.isBefore(breakEnd) && endTime.isAfter(breakStart);
+    }
+
     private String generatePaymentUploadToken() {
         return UUID.randomUUID().toString().replace("-", "");
     }
@@ -451,5 +499,9 @@ public class BookingService {
         }
 
         return value.trim();
+    }
+
+    private String formatTime(LocalTime time) {
+        return time.format(TIME_FORMATTER);
     }
 }

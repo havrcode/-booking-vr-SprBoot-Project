@@ -51,7 +51,12 @@ class BookingApiIntegrationTests {
     void exposesPublicBookingSettings() throws Exception {
         mockMvc.perform(get("/api/v1/booking-settings"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.maxConcurrentBookings").value(1))
+                .andExpect(jsonPath("$.maxConcurrentBookings").value(2))
+                .andExpect(jsonPath("$.schedule.openTime").value("09:30"))
+                .andExpect(jsonPath("$.schedule.closeTime").value("20:30"))
+                .andExpect(jsonPath("$.schedule.breakStart").value("14:30"))
+                .andExpect(jsonPath("$.schedule.breakEnd").value("15:30"))
+                .andExpect(jsonPath("$.schedule.slotStepMinutes").value(30))
                 .andExpect(jsonPath("$.payment.payAtClubEnabled").value(true))
                 .andExpect(jsonPath("$.payment.cardTransferEnabled").value(true))
                 .andExpect(jsonPath("$.payment.cardNumber").value("4444555566667777"));
@@ -75,7 +80,7 @@ class BookingApiIntegrationTests {
     void createsBookingAndRejectsOverlappingSlot() throws Exception {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(7)
-                .withHour(14)
+                .withHour(10)
                 .withMinute(0)
                 .withSecond(0)
                 .withNano(0);
@@ -114,6 +119,38 @@ class BookingApiIntegrationTests {
         mockMvc.perform(post("/api/v1/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+    }
+
+    @Test
+    void rejectsLunchBreakAndClosedHours() throws Exception {
+        LocalDateTime lunchStartsAt = LocalDateTime.now()
+                .plusDays(17)
+                .withHour(14)
+                .withMinute(30)
+                .withSecond(0)
+                .withNano(0);
+        LocalDateTime lateStartsAt = lunchStartsAt
+                .plusDays(1)
+                .withHour(20)
+                .withMinute(0);
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(lunchStartsAt, "lunch-break@example.com")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409));
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload(lateStartsAt, "after-close@example.com")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.status").value(409));
     }
@@ -366,5 +403,17 @@ class BookingApiIntegrationTests {
                         .content(bookingPayload))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    private String payload(LocalDateTime startsAt, String email) {
+        return """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Клієнт перевірки графіка",
+                  "customerPhone": "+380501234572",
+                  "customerEmail": "%s",
+                  "startsAt": "%s"
+                }
+                """.formatted(email, startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
     }
 }

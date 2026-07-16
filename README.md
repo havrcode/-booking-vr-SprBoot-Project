@@ -55,7 +55,14 @@ docs/TESTING_AND_LAUNCH.md
 
 ```json
 {
-  "maxConcurrentBookings": 1,
+  "maxConcurrentBookings": 2,
+  "schedule": {
+    "openTime": "09:30",
+    "closeTime": "20:30",
+    "breakStart": "14:30",
+    "breakEnd": "15:30",
+    "slotStepMinutes": 30
+  },
   "payment": {
     "payAtClubEnabled": true,
     "cardTransferEnabled": false,
@@ -158,7 +165,12 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `DB_NAME` | `virtum_booking` |
 | `DB_USER` | `virtum_booking` |
 | `DB_PASSWORD` | `strong-password` |
-| `MAX_CONCURRENT_BOOKINGS` | `1` |
+| `MAX_CONCURRENT_BOOKINGS` | `2` |
+| `BOOKING_OPEN_TIME` | `09:30` |
+| `BOOKING_CLOSE_TIME` | `20:30` |
+| `BOOKING_BREAK_START` | `14:30` |
+| `BOOKING_BREAK_END` | `15:30` |
+| `BOOKING_SLOT_STEP_MINUTES` | `30` |
 | `PAYMENT_PAY_AT_CLUB_ENABLED` | `true` |
 | `PAYMENT_CARD_TRANSFER_ENABLED` | `true` |
 | `PAYMENT_CARD_HOLDER` | `Virtum VR` |
@@ -173,7 +185,7 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `TELEGRAM_BOT_TOKEN` | `123456:bot-token` |
 | `TELEGRAM_CHAT_ID` | `123456789` |
 
-`MAX_CONCURRENT_BOOKINGS` - це кількість бронювань, які можна прийняти на один і той самий часовий інтервал. Якщо фізично працює одне VR-місце/кімната, залиш `1`. Якщо можна обслуговувати кілька клієнтів або груп одночасно, постав реальну кількість.
+`MAX_CONCURRENT_BOOKINGS` - це кількість бронювань, які можна прийняти на один і той самий часовий інтервал. Для двох активних VR-шоломів використовується `2`. Обідня пауза `14:30-15:30` і час поза графіком `09:30-20:30` блокуються backend-ом.
 
 Щоб показати клієнту реквізити карти, вистав `PAYMENT_CARD_TRANSFER_ENABLED=true` і заповни `PAYMENT_CARD_NUMBER`, `PAYMENT_CARD_HOLDER`, `PAYMENT_CARD_BANK`. Файли зі скрінами оплати зберігаються у `PAYMENT_PROOFS_DIR`; ця директорія не повинна комітитись у git.
 

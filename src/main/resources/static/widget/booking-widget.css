@@ -92,12 +92,21 @@
   align-items: stretch;
 }
 
-.virtum-booking-form label {
+.virtum-booking-form label,
+.virtum-booking-time-field {
   display: grid;
   gap: 8px;
   color: #b9c8d9;
   font-size: 13px;
   font-weight: 700;
+}
+
+.virtum-booking-time-field {
+  grid-column: 1 / -1;
+}
+
+.virtum-booking-field-label {
+  color: #b9c8d9;
 }
 
 .virtum-booking-form input,
@@ -136,9 +145,78 @@
 .virtum-booking-form input:focus,
 .virtum-booking-form select:focus,
 .virtum-booking-close:focus,
-.virtum-booking-submit:focus {
+.virtum-booking-submit:focus,
+.virtum-booking-time-slot:focus {
   outline: 2px solid #ffdd45;
   outline-offset: 2px;
+}
+
+.virtum-booking-time-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 10px;
+}
+
+.virtum-booking-time-slot {
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+  border: 1px solid rgba(102, 238, 255, 0.28);
+  border-radius: 6px;
+  padding: 10px 12px;
+  background: #10172d;
+  color: #ffffff;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.virtum-booking-time-slot:hover {
+  border-color: rgba(255, 221, 69, 0.72);
+  background: #15203b;
+}
+
+.virtum-booking-time-slot span {
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.virtum-booking-time-slot small {
+  color: #70f1ff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.virtum-booking-time-slot.is-selected {
+  border-color: #ffdd45;
+  background: #231f13;
+  box-shadow: inset 0 0 0 1px #ffdd45;
+}
+
+.virtum-booking-time-slot.is-disabled,
+.virtum-booking-time-slot:disabled {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: #0c1020;
+  color: #6e7a8d;
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+.virtum-booking-time-slot.is-disabled small,
+.virtum-booking-time-slot:disabled small {
+  color: #8d98aa;
+}
+
+.virtum-booking-time-empty {
+  grid-column: 1 / -1;
+  min-height: 46px;
+  margin: 0;
+  border: 1px dashed rgba(102, 238, 255, 0.24);
+  border-radius: 6px;
+  padding: 13px 12px;
+  background: #0b1021;
+  color: #91a2b6;
+  font-size: 14px;
 }
 
 .virtum-booking-note {
@@ -202,5 +280,9 @@
   .virtum-booking-payment-grid,
   .virtum-booking-actions {
     grid-template-columns: 1fr;
+  }
+
+  .virtum-booking-time-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
