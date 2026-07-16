@@ -34,6 +34,7 @@ import ua.com.virtum.booking.repository.VrServiceRepository;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -56,6 +57,7 @@ public class BookingService {
     private final BookingProperties bookingProperties;
     private final PaymentProperties paymentProperties;
     private final PaymentProofStorage paymentProofStorage;
+    private final Clock clock;
 
     public BookingService(
             BookingRepository bookingRepository,
@@ -64,7 +66,8 @@ public class BookingService {
             BookingNotificationService notificationService,
             BookingProperties bookingProperties,
             PaymentProperties paymentProperties,
-            PaymentProofStorage paymentProofStorage
+            PaymentProofStorage paymentProofStorage,
+            Clock clock
     ) {
         this.bookingRepository = bookingRepository;
         this.vrServiceRepository = vrServiceRepository;
@@ -73,6 +76,7 @@ public class BookingService {
         this.bookingProperties = bookingProperties;
         this.paymentProperties = paymentProperties;
         this.paymentProofStorage = paymentProofStorage;
+        this.clock = clock;
     }
 
     public List<VrService> listServices() {
@@ -186,6 +190,7 @@ public class BookingService {
         booking.setPaymentMethod(resolvePaymentMethod(request.paymentMethod()));
         booking.setPaymentStatus(PaymentStatus.UNPAID);
         booking.setPaymentUploadToken(generatePaymentUploadToken());
+        booking.setCreatedAt(LocalDateTime.now(clock));
 
         Booking savedBooking = bookingRepository.save(booking);
         notificationService.bookingCreated(toAdminResponse(savedBooking));
@@ -209,7 +214,7 @@ public class BookingService {
         booking.setPaymentProofPath(storedProof.filename());
         booking.setPaymentProofOriginalFilename(storedProof.originalFilename());
         booking.setPaymentProofContentType(storedProof.contentType());
-        booking.setPaymentProofUploadedAt(LocalDateTime.now());
+        booking.setPaymentProofUploadedAt(LocalDateTime.now(clock));
         booking.setPaymentStatus(PaymentStatus.PENDING_REVIEW);
 
         return toResponse(booking);
@@ -235,7 +240,7 @@ public class BookingService {
             String serviceSlug,
             Integer helmetsCount
     ) {
-        LocalDate effectiveFrom = from == null ? LocalDate.now() : from;
+        LocalDate effectiveFrom = from == null ? LocalDate.now(clock) : from;
         LocalDate effectiveTo = to == null ? effectiveFrom.plusMonths(2) : to;
 
         if (serviceSlug == null || serviceSlug.isBlank()) {
@@ -271,7 +276,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<AdminBookingResponse> listAdmin(LocalDate from, LocalDate to, BookingStatus status) {
-        LocalDate effectiveFrom = from == null ? LocalDate.now() : from;
+        LocalDate effectiveFrom = from == null ? LocalDate.now(clock) : from;
         LocalDate effectiveTo = to == null ? effectiveFrom.plusDays(30) : to;
 
         if (effectiveTo.isBefore(effectiveFrom)) {
@@ -310,7 +315,7 @@ public class BookingService {
 
     @Transactional(readOnly = true)
     public List<AvailabilityBlockResponse> listAdminAvailabilityBlocks(LocalDate from, LocalDate to) {
-        LocalDate effectiveFrom = from == null ? LocalDate.now() : from;
+        LocalDate effectiveFrom = from == null ? LocalDate.now(clock) : from;
         LocalDate effectiveTo = to == null ? effectiveFrom.plusDays(30) : to;
 
         if (effectiveTo.isBefore(effectiveFrom)) {
@@ -337,6 +342,7 @@ public class BookingService {
         block.setStartsAt(request.startsAt());
         block.setEndsAt(request.endsAt());
         block.setReason(normalizeReason(request.reason()));
+        block.setCreatedAt(LocalDateTime.now(clock));
         return toAvailabilityBlockResponse(availabilityBlockRepository.save(block));
     }
 
@@ -437,7 +443,7 @@ public class BookingService {
     }
 
     private void validateFutureSlot(LocalDateTime startsAt) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         if (!startsAt.isAfter(now)) {
             throw new ConflictException("Цей час уже неактивний для бронювання, бо зараз "
@@ -479,7 +485,7 @@ public class BookingService {
         int opensAt = toMinutes(bookingProperties.getOpenTime());
         int closesAt = toMinutes(bookingProperties.getCloseTime());
         int stepMinutes = bookingProperties.getSlotStepMinutes();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         for (int minute = opensAt; minute + durationMinutes <= closesAt; minute += stepMinutes) {
             LocalDateTime startsAt = day.atTime(minute / 60, minute % 60);

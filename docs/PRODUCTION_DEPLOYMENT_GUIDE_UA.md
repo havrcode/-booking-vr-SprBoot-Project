@@ -95,6 +95,9 @@ X-Admin-Api-Key: <ADMIN_API_KEY>
 ```text
 SPRING_PROFILES_ACTIVE=prod
 SERVER_PORT=8080
+APP_TIME_ZONE=Europe/Kyiv
+TZ=Europe/Kyiv
+JAVA_TOOL_OPTIONS=-Duser.timezone=Europe/Kyiv
 
 DB_HOST=127.0.0.1
 DB_PORT=5432
@@ -128,6 +131,28 @@ TELEGRAM_CHAT_ID=replace_with_chat_id
 ```
 
 `MAX_CONCURRENT_BOOKINGS=2` означає, що на один і той самий час можна прийняти два активні VR-шоломи. Клієнт може забронювати `1` або `2` шоломи одним бронюванням. Графік `09:30-20:30`, `14:30-15:30` закрито як обідня пауза, а стартові слоти йдуть щогодини від `09:30`.
+
+### Час сервера і Kyiv timezone
+
+Застосунок рахує бізнес-час бронювання у timezone `Europe/Kyiv` через `APP_TIME_ZONE`. Java автоматично враховує перехід на літній/зимовий час для цієї зони.
+
+На самому сервері увімкни NTP-синхронізацію годинника:
+
+```bash
+sudo timedatectl set-timezone Europe/Kyiv
+sudo timedatectl set-ntp true
+timedatectl
+```
+
+На Ubuntu/Debian `systemd-timesyncd` сам повторює синхронізацію, якщо мережа тимчасово недоступна. Для серверів із жорсткішими вимогами можна встановити `chrony`; він також автоматично робить повторні спроби:
+
+```bash
+sudo apt install chrony
+sudo systemctl enable --now chrony
+chronyc tracking
+```
+
+Не треба синхронізувати системний годинник із Spring Boot: для цього потрібні root-права, і це має робити ОС.
 
 ## 6. PostgreSQL
 

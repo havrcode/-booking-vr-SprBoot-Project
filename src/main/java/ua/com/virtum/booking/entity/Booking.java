@@ -44,7 +44,7 @@ public class Booking {
     private String paymentProofContentType;
     private LocalDateTime paymentProofUploadedAt;
     @Column(nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
     public Long getId() { return id; }
     public VrService getService() { return service; }
@@ -80,4 +80,5 @@ public class Booking {
     public LocalDateTime getPaymentProofUploadedAt() { return paymentProofUploadedAt; }
     public void setPaymentProofUploadedAt(LocalDateTime paymentProofUploadedAt) { this.paymentProofUploadedAt = paymentProofUploadedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

@@ -193,6 +193,7 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | --- | --- |
 | `SPRING_PROFILES_ACTIVE` | `prod` |
 | `SERVER_PORT` | `8080` |
+| `APP_TIME_ZONE` | `Europe/Kyiv` |
 | `DB_HOST` | `localhost` |
 | `DB_PORT` | `5432` |
 | `DB_NAME` | `virtum_booking` |
@@ -217,6 +218,12 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `TELEGRAM_NOTIFICATIONS_ENABLED` | `true` |
 | `TELEGRAM_BOT_TOKEN` | `123456:bot-token` |
 | `TELEGRAM_CHAT_ID` | `123456789` |
+
+### Час і timezone
+
+Бізнес-час бронювання рахується в timezone `Europe/Kyiv` через `APP_TIME_ZONE`. Ця зона автоматично враховує перехід України на літній і зимовий час.
+
+Синхронізацію системного годинника має робити сервер через NTP (`systemd-timesyncd`, `chrony` або аналог). Spring Boot не змінює системний час самостійно: це потребує root-доступу і може ламати інші сервіси. Якщо під час NTP-синхронізації немає мережі, системний сервіс часу сам повторює спроби без помилки для застосунку.
 
 `MAX_CONCURRENT_BOOKINGS` - це кількість бронювань, які можна прийняти на один і той самий часовий інтервал. Для двох активних VR-шоломів використовується `2`. Обідня пауза `14:30-15:30` і час поза графіком `09:30-20:30` блокуються backend-ом.
 `BOOKING_SLOT_STEP_MINUTES=60` означає, що стартові слоти йдуть щогодини від `09:30`: `09:30`, `10:30`, `11:30` тощо.
