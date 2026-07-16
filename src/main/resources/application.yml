@@ -22,7 +22,12 @@ server:
 
 app:
   booking:
-    max-concurrent-bookings: ${MAX_CONCURRENT_BOOKINGS:1}
+    max-concurrent-bookings: ${MAX_CONCURRENT_BOOKINGS:2}
+    open-time: "${BOOKING_OPEN_TIME:09:30}"
+    close-time: "${BOOKING_CLOSE_TIME:20:30}"
+    break-start: "${BOOKING_BREAK_START:14:30}"
+    break-end: "${BOOKING_BREAK_END:15:30}"
+    slot-step-minutes: ${BOOKING_SLOT_STEP_MINUTES:30}
   payment:
     pay-at-club-enabled: ${PAYMENT_PAY_AT_CLUB_ENABLED:true}
     card-transfer-enabled: ${PAYMENT_CARD_TRANSFER_ENABLED:false}

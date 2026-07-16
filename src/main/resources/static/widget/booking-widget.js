@@ -2,9 +2,12 @@
   const DEFAULT_CONFIG = {
     apiBase: "",
     triggerSelector: "[data-virtum-booking-open]",
-    maxConcurrentBookings: 1,
-    startHour: 10,
-    endHour: 21,
+    maxConcurrentBookings: 2,
+    openTime: "09:30",
+    closeTime: "20:30",
+    breaks: [
+      { start: "14:30", end: "15:30", label: "Обід" },
+    ],
     slotStepMinutes: 30,
   };
 
@@ -15,7 +18,16 @@
     ...userConfig,
   };
 
+  if (userConfig.startHour !== undefined && userConfig.openTime === undefined) {
+    config.openTime = hourToTime(userConfig.startHour, DEFAULT_CONFIG.openTime);
+  }
+
+  if (userConfig.endHour !== undefined && userConfig.closeTime === undefined) {
+    config.closeTime = hourToTime(userConfig.endHour, DEFAULT_CONFIG.closeTime);
+  }
+
   config.apiBase = normalizeApiBase(config.apiBase || inferApiBase(script));
+  normalizeScheduleConfig();
 
   const state = {
     availabilityBlocks: [],
@@ -37,7 +49,8 @@
   let form;
   let serviceSelect;
   let dateInput;
-  let timeSelect;
+  let timeInput;
+  let timeSlotGrid;
   let messageNode;
   let paymentDetailsNode;
   let paymentMethodSelect;
@@ -86,12 +99,13 @@
               Дата
               <input name="date" type="date" required>
             </label>
-            <label>
-              Час
-              <select name="time" required>
-                <option value="">Оберіть дату</option>
-              </select>
-            </label>
+            <div class="virtum-booking-time-field">
+              <span class="virtum-booking-field-label">Час</span>
+              <input name="time" type="hidden">
+              <div class="virtum-booking-time-grid" role="radiogroup" aria-label="Оберіть час бронювання">
+                <p class="virtum-booking-time-empty">Оберіть дату</p>
+              </div>
+            </div>
           </div>
 
           <div class="virtum-booking-grid">
@@ -139,7 +153,8 @@
     form = root.querySelector(".virtum-booking-form");
     serviceSelect = form.elements.serviceSlug;
     dateInput = form.elements.date;
-    timeSelect = form.elements.time;
+    timeInput = form.elements.time;
+    timeSlotGrid = root.querySelector(".virtum-booking-time-grid");
     messageNode = root.querySelector(".virtum-booking-message");
     paymentDetailsNode = root.querySelector(".virtum-booking-payment-details");
     paymentMethodSelect = form.elements.paymentMethod;
@@ -250,6 +265,10 @@
         };
       }
 
+      if (settings.schedule) {
+        applyScheduleSettings(settings.schedule);
+      }
+
       renderPaymentOptions();
     } catch (error) {
       // Keep the configured fallback. The backend still enforces capacity.
@@ -328,8 +347,8 @@
       return;
     }
 
-    timeSelect.disabled = true;
-    timeSelect.innerHTML = '<option value="">Завантаження...</option>';
+    timeInput.value = "";
+    renderTimeSlotMessage("Завантаження...");
 
     try {
       const [bookings, availabilityBlocks] = await Promise.all([
@@ -345,8 +364,6 @@
       state.bookings = [];
       renderTimeSlots();
       setMessage(error.message);
-    } finally {
-      timeSelect.disabled = false;
     }
   }
 
@@ -354,8 +371,10 @@
     const service = state.selectedService;
     const date = dateInput.value;
 
+    timeInput.value = "";
+
     if (!service || !date) {
-      timeSelect.innerHTML = '<option value="">Оберіть послугу і дату</option>';
+      renderTimeSlotMessage("Оберіть послугу і дату");
       return;
     }
 
@@ -363,27 +382,39 @@
     const availableSlots = slots.filter((slot) => !slot.disabled);
 
     if (!availableSlots.length) {
-      timeSelect.innerHTML = '<option value="">Немає вільних слотів</option>';
+      renderTimeSlotMessage("Немає вільних слотів");
       return;
     }
 
-    timeSelect.innerHTML = slots.map((slot) => `
-      <option value="${slot.value}" ${slot.disabled ? "disabled" : ""}>
-        ${slot.label}${slot.disabledReason}
-      </option>
+    timeSlotGrid.innerHTML = slots.map((slot) => `
+      <button
+        class="virtum-booking-time-slot${slot.disabled ? " is-disabled" : ""}"
+        type="button"
+        data-time="${escapeHtml(slot.value)}"
+        role="radio"
+        aria-checked="false"
+        ${slot.disabled ? "disabled" : ""}
+      >
+        <span>${slot.label}</span>
+        <small>${slot.statusLabel}</small>
+      </button>
     `).join("");
 
-    const firstAvailable = timeSelect.querySelector("option:not(:disabled)");
+    timeSlotGrid.querySelectorAll("[data-time]").forEach((button) => {
+      button.addEventListener("click", () => selectTimeSlot(button.dataset.time));
+    });
+
+    const firstAvailable = timeSlotGrid.querySelector("[data-time]:not(:disabled)");
     if (firstAvailable) {
-      timeSelect.value = firstAvailable.value;
+      selectTimeSlot(firstAvailable.dataset.time);
     }
   }
 
   function buildSlots(dateValue, durationMinutes) {
     const slots = [];
     const today = new Date();
-    const opensAt = config.startHour * 60;
-    const closesAt = config.endHour * 60;
+    const opensAt = timeToMinutes(config.openTime);
+    const closesAt = timeToMinutes(config.closeTime);
 
     // Backend rejects overlaps too; this client-side pass simply hides bad choices early.
     for (let minute = opensAt; minute + durationMinutes <= closesAt; minute += config.slotStepMinutes) {
@@ -391,12 +422,23 @@
       const startsAt = parseLocalDateTime(dateValue, time);
       const endsAt = new Date(startsAt.getTime() + durationMinutes * 60 * 1000);
       const past = startsAt <= today;
-      const booked = isFullyBooked(startsAt, endsAt);
-      const closed = overlapsAvailabilityBlock(startsAt, endsAt);
+      const bookingCount = countOverlappingBookings(startsAt, endsAt);
+      const booked = bookingCount >= config.maxConcurrentBookings;
+      const scheduleBreak = overlappingScheduleBreak(minute, minute + durationMinutes);
+      const closed = Boolean(scheduleBreak) || overlapsAvailabilityBlock(startsAt, endsAt);
+      const availablePlaces = Math.max(config.maxConcurrentBookings - bookingCount, 0);
 
       slots.push({
         disabled: past || booked || closed,
-        disabledReason: past ? " - недоступно" : booked ? " - зайнято" : closed ? " - закрито" : "",
+        statusLabel: past
+          ? "Недоступно"
+          : booked
+            ? "Зайнято"
+            : scheduleBreak
+              ? scheduleBreak.label
+              : closed
+                ? "Закрито"
+                : `Вільно ${availablePlaces}/${config.maxConcurrentBookings}`,
         label: `${time} - ${minutesToTime(minute + durationMinutes)}`,
         value: time,
       });
@@ -405,14 +447,12 @@
     return slots;
   }
 
-  function isFullyBooked(startsAt, endsAt) {
-    const overlappingBookings = state.bookings.filter((booking) => {
+  function countOverlappingBookings(startsAt, endsAt) {
+    return state.bookings.filter((booking) => {
       const bookingStart = new Date(booking.startsAt);
       const bookingEnd = new Date(booking.endsAt);
       return bookingStart < endsAt && bookingEnd > startsAt;
     }).length;
-
-    return overlappingBookings >= config.maxConcurrentBookings;
   }
 
   function overlapsAvailabilityBlock(startsAt, endsAt) {
@@ -423,11 +463,34 @@
     });
   }
 
+  function overlappingScheduleBreak(startMinute, endMinute) {
+    return config.breaks.find((breakItem) => {
+      const breakStart = timeToMinutes(breakItem.start);
+      const breakEnd = timeToMinutes(breakItem.end);
+
+      return breakEnd > breakStart && startMinute < breakEnd && endMinute > breakStart;
+    });
+  }
+
+  function renderTimeSlotMessage(message) {
+    timeSlotGrid.innerHTML = `<p class="virtum-booking-time-empty">${escapeHtml(message)}</p>`;
+  }
+
+  function selectTimeSlot(time) {
+    timeInput.value = time || "";
+
+    timeSlotGrid.querySelectorAll("[data-time]").forEach((button) => {
+      const selected = button.dataset.time === time;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-checked", String(selected));
+    });
+  }
+
   async function submitBooking(event) {
     event.preventDefault();
     setMessage("");
 
-    if (!timeSelect.value) {
+    if (!timeInput.value) {
       setMessage("Оберіть вільний час.");
       return;
     }
@@ -529,8 +592,17 @@
   function errorMessage(status, body) {
     if (status === 409) {
       const serverError = body && typeof body === "object" && body.error ? String(body.error) : "";
+      const normalizedError = serverError.toLowerCase();
 
-      if (serverError.toLowerCase().includes("closed")) {
+      if (normalizedError.includes("lunch")) {
+        return "На цей час обідня пауза. Оберіть інший слот.";
+      }
+
+      if (normalizedError.includes("working hours")) {
+        return "Цей час поза графіком роботи. Оберіть інший слот.";
+      }
+
+      if (normalizedError.includes("closed")) {
         return "Цей час закритий адміністратором. Оберіть інший слот.";
       }
 
@@ -552,6 +624,72 @@
     return String(value || "").replace(/\/+$/, "");
   }
 
+  function normalizeScheduleConfig() {
+    config.openTime = normalizeTime(config.openTime, DEFAULT_CONFIG.openTime);
+    config.closeTime = normalizeTime(config.closeTime, DEFAULT_CONFIG.closeTime);
+    config.slotStepMinutes = positiveInteger(config.slotStepMinutes, DEFAULT_CONFIG.slotStepMinutes);
+    config.breaks = normalizeBreaks(config.breaks);
+  }
+
+  function applyScheduleSettings(schedule) {
+    config.openTime = normalizeTime(schedule.openTime, config.openTime);
+    config.closeTime = normalizeTime(schedule.closeTime, config.closeTime);
+    config.slotStepMinutes = positiveInteger(schedule.slotStepMinutes, config.slotStepMinutes);
+
+    if (schedule.breakStart && schedule.breakEnd) {
+      config.breaks = normalizeBreaks([
+        { start: schedule.breakStart, end: schedule.breakEnd, label: "Обід" },
+      ]);
+    }
+  }
+
+  function normalizeBreaks(breaks) {
+    const normalized = Array.isArray(breaks)
+      ? breaks
+          .map((breakItem) => ({
+            start: normalizeTime(breakItem.start, ""),
+            end: normalizeTime(breakItem.end, ""),
+            label: String(breakItem.label || "Перерва"),
+          }))
+          .filter((breakItem) => breakItem.start && breakItem.end && timeToMinutes(breakItem.end) > timeToMinutes(breakItem.start))
+      : [];
+
+    return normalized.length ? normalized : DEFAULT_CONFIG.breaks;
+  }
+
+  function normalizeTime(value, fallback) {
+    const match = String(value || "").match(/^(\d{1,2}):(\d{2})$/);
+
+    if (!match) {
+      return fallback;
+    }
+
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+
+    if (!Number.isInteger(hours) || !Number.isInteger(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return fallback;
+    }
+
+    return minutesToTime(hours * 60 + minutes);
+  }
+
+  function hourToTime(value, fallback) {
+    const hour = Number(value);
+
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) {
+      return fallback;
+    }
+
+    return minutesToTime(hour * 60);
+  }
+
+  function positiveInteger(value, fallback) {
+    const number = Number(value);
+
+    return Number.isInteger(number) && number > 0 ? number : fallback;
+  }
+
   function inferApiBase(currentScript) {
     if (currentScript?.src) {
       return new URL(currentScript.src, window.location.href).origin;
@@ -570,6 +708,11 @@
     return `${hours}:${mins}`;
   }
 
+  function timeToMinutes(time) {
+    const [hours, minutes] = String(time).split(":").map(Number);
+    return hours * 60 + minutes;
+  }
+
   function toDateValue(date) {
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -579,8 +722,9 @@
 
   function firstBookableDate() {
     const date = new Date();
+    const currentMinutes = date.getHours() * 60 + date.getMinutes();
 
-    if (date.getHours() >= config.endHour) {
+    if (currentMinutes >= timeToMinutes(config.closeTime)) {
       date.setDate(date.getDate() + 1);
     }
 

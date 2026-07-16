@@ -40,7 +40,14 @@ curl http://localhost:8080/api/v1/booking-settings
 
 ```json
 {
-  "maxConcurrentBookings": 1,
+  "maxConcurrentBookings": 2,
+  "schedule": {
+    "openTime": "09:30",
+    "closeTime": "20:30",
+    "breakStart": "14:30",
+    "breakEnd": "15:30",
+    "slotStepMinutes": 30
+  },
   "payment": {
     "payAtClubEnabled": true,
     "cardTransferEnabled": false
@@ -58,12 +65,12 @@ curl -X POST http://localhost:8080/api/v1/bookings \
     "customerName": "Тестовий клієнт",
     "customerPhone": "+380501234567",
     "customerEmail": "test@example.com",
-    "startsAt": "2026-08-01T14:00:00",
+    "startsAt": "2026-08-01T10:00:00",
     "paymentMethod": "PAY_AT_CLUB"
   }'
 ```
 
-За замовчуванням `MAX_CONCURRENT_BOOKINGS=1`, тому повторний запит на той самий час має повернути `409 Conflict`. Якщо на production виставлено більше значення, `409` має повертатись тільки після заповнення всіх паралельних місць.
+За замовчуванням `MAX_CONCURRENT_BOOKINGS=2`, тому два запити на той самий час мають пройти, а третій має повернути `409 Conflict`. Слот, який перетинає обід `14:30-15:30`, також має повертати `409`.
 
 Public endpoint зайнятих інтервалів:
 
@@ -153,7 +160,12 @@ https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates
 Production ENV:
 
 ```text
-MAX_CONCURRENT_BOOKINGS=1
+MAX_CONCURRENT_BOOKINGS=2
+BOOKING_OPEN_TIME=09:30
+BOOKING_CLOSE_TIME=20:30
+BOOKING_BREAK_START=14:30
+BOOKING_BREAK_END=15:30
+BOOKING_SLOT_STEP_MINUTES=30
 PAYMENT_PAY_AT_CLUB_ENABLED=true
 PAYMENT_CARD_TRANSFER_ENABLED=true
 PAYMENT_CARD_HOLDER=<card-holder>
@@ -188,9 +200,10 @@ https://booking-api.virtum-vr.com.ua
   window.VIRTUM_BOOKING_WIDGET = {
     apiBase: "https://booking-api.virtum-vr.com.ua",
     triggerSelector: "[data-virtum-booking-open]",
-    maxConcurrentBookings: 1,
-    startHour: 10,
-    endHour: 21,
+    maxConcurrentBookings: 2,
+    openTime: "09:30",
+    closeTime: "20:30",
+    breaks: [{ start: "14:30", end: "15:30", label: "Обід" }],
     slotStepMinutes: 30
   };
 </script>
