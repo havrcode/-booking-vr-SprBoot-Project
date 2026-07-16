@@ -11,6 +11,7 @@ public record BookingResponse(
         String serviceSlug,
         String serviceTitle,
         Integer durationMinutes,
+        Integer helmetsCount,
         BigDecimal price,
         String currency,
         String customerName,

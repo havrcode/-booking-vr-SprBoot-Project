@@ -8,6 +8,7 @@ import ua.com.virtum.booking.config.PaymentProperties;
 import ua.com.virtum.booking.dto.AdminBookingResponse;
 import ua.com.virtum.booking.dto.AdminVrServiceResponse;
 import ua.com.virtum.booking.dto.AvailabilityBlockResponse;
+import ua.com.virtum.booking.dto.BookingDayAvailabilityResponse;
 import ua.com.virtum.booking.dto.BookingResponse;
 import ua.com.virtum.booking.dto.BookingScheduleResponse;
 import ua.com.virtum.booking.dto.BookingSettingsResponse;
@@ -144,18 +145,19 @@ public class BookingService {
 
         LocalDateTime startsAt = request.startsAt();
         LocalDateTime endsAt = startsAt.plusMinutes(service.getDurationMinutes());
+        int helmetsCount = resolveHelmetsCount(request.helmetsCount());
 
         validateWithinBookingSchedule(startsAt, endsAt);
 
         // Only confirmed bookings block capacity. Cancelled bookings keep history,
         // but their time slot can be booked again.
-        long overlappingBookings = bookingRepository.countByStatusAndStartsAtLessThanAndEndsAtGreaterThan(
+        long overlappingHelmets = bookingRepository.sumHelmetsCountByStatusAndPeriod(
                 BookingStatus.CONFIRMED,
                 endsAt,
                 startsAt
         );
 
-        if (overlappingBookings >= bookingProperties.getMaxConcurrentBookings()) {
+        if (overlappingHelmets + helmetsCount > bookingProperties.getMaxConcurrentBookings()) {
             throw new ConflictException("This time slot is fully booked. Please choose another one.");
         }
 
@@ -173,6 +175,7 @@ public class BookingService {
         booking.setCustomerEmail(request.customerEmail());
         booking.setStartsAt(startsAt);
         booking.setEndsAt(endsAt);
+        booking.setHelmetsCount(helmetsCount);
         booking.setPaymentMethod(resolvePaymentMethod(request.paymentMethod()));
         booking.setPaymentStatus(PaymentStatus.UNPAID);
         booking.setPaymentUploadToken(generatePaymentUploadToken());
@@ -215,6 +218,47 @@ public class BookingService {
                         to
                 ).stream()
                 .map(this::toSlotResponse)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<BookingDayAvailabilityResponse> listDayAvailability(
+            LocalDate from,
+            LocalDate to,
+            String serviceSlug,
+            Integer helmetsCount
+    ) {
+        LocalDate effectiveFrom = from == null ? LocalDate.now() : from;
+        LocalDate effectiveTo = to == null ? effectiveFrom.plusMonths(2) : to;
+
+        if (serviceSlug == null || serviceSlug.isBlank()) {
+            throw new BadRequestException("Parameter 'serviceSlug' is required.");
+        }
+
+        if (effectiveTo.isBefore(effectiveFrom)) {
+            throw new BadRequestException("Parameter 'to' must be on or after 'from'.");
+        }
+
+        if (effectiveTo.isAfter(effectiveFrom.plusDays(62))) {
+            throw new BadRequestException("Date range cannot be longer than 62 days.");
+        }
+
+        VrService service = vrServiceRepository.findBySlugAndActiveTrue(serviceSlug)
+                .orElseThrow(() -> new NotFoundException("Service not found: " + serviceSlug));
+        int requestedHelmets = resolveHelmetsCount(helmetsCount);
+        LocalDateTime startsFrom = effectiveFrom.atStartOfDay();
+        LocalDateTime startsBefore = effectiveTo.plusDays(1).atStartOfDay();
+        List<Booking> bookings = bookingRepository
+                .findByStatusAndStartsAtGreaterThanEqualAndStartsAtLessThanOrderByStartsAtAsc(
+                        BookingStatus.CONFIRMED,
+                        startsFrom,
+                        startsBefore
+                );
+        List<AvailabilityBlock> availabilityBlocks = availabilityBlockRepository
+                .findByStartsAtLessThanAndEndsAtGreaterThanOrderByStartsAtAsc(startsBefore, startsFrom);
+
+        return effectiveFrom.datesUntil(effectiveTo.plusDays(1))
+                .map(day -> toDayAvailability(day, service.getDurationMinutes(), requestedHelmets, bookings, availabilityBlocks))
                 .toList();
     }
 
@@ -347,6 +391,20 @@ public class BookingService {
         return effectivePaymentMethod;
     }
 
+    private int resolveHelmetsCount(Integer helmetsCount) {
+        int effectiveHelmetsCount = helmetsCount == null ? 1 : helmetsCount;
+
+        if (effectiveHelmetsCount < 1) {
+            throw new BadRequestException("Field 'helmetsCount' must be at least 1.");
+        }
+
+        if (effectiveHelmetsCount > bookingProperties.getMaxConcurrentBookings()) {
+            throw new BadRequestException("Cannot book more helmets than available.");
+        }
+
+        return effectiveHelmetsCount;
+    }
+
     private void validateWithinBookingSchedule(LocalDateTime startsAt, LocalDateTime endsAt) {
         if (!startsAt.toLocalDate().equals(endsAt.toLocalDate())) {
             throw new ConflictException("This time slot is outside working hours. Please choose another one.");
@@ -359,6 +417,11 @@ public class BookingService {
 
         if (startTime.isBefore(openTime) || endTime.isAfter(closeTime)) {
             throw new ConflictException("This time slot is outside working hours. Please choose another one.");
+        }
+
+        int minutesFromOpen = toMinutes(startTime) - toMinutes(openTime);
+        if (minutesFromOpen % bookingProperties.getSlotStepMinutes() != 0) {
+            throw new ConflictException("This time slot is not aligned with booking slot step. Please choose another one.");
         }
 
         if (overlapsBreak(startTime, endTime)) {
@@ -375,6 +438,70 @@ public class BookingService {
         }
 
         return startTime.isBefore(breakEnd) && endTime.isAfter(breakStart);
+    }
+
+    private BookingDayAvailabilityResponse toDayAvailability(
+            LocalDate day,
+            int durationMinutes,
+            int helmetsCount,
+            List<Booking> bookings,
+            List<AvailabilityBlock> availabilityBlocks
+    ) {
+        int availableSlots = countAvailableSlots(day, durationMinutes, helmetsCount, bookings, availabilityBlocks);
+        return new BookingDayAvailabilityResponse(day, availableSlots > 0, availableSlots);
+    }
+
+    private int countAvailableSlots(
+            LocalDate day,
+            int durationMinutes,
+            int helmetsCount,
+            List<Booking> bookings,
+            List<AvailabilityBlock> availabilityBlocks
+    ) {
+        int slots = 0;
+        int opensAt = toMinutes(bookingProperties.getOpenTime());
+        int closesAt = toMinutes(bookingProperties.getCloseTime());
+        int stepMinutes = bookingProperties.getSlotStepMinutes();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (int minute = opensAt; minute + durationMinutes <= closesAt; minute += stepMinutes) {
+            LocalDateTime startsAt = day.atTime(minute / 60, minute % 60);
+            LocalDateTime endsAt = startsAt.plusMinutes(durationMinutes);
+
+            if (startsAt.isBefore(now) || startsAt.isEqual(now)) {
+                continue;
+            }
+
+            if (overlapsBreak(startsAt.toLocalTime(), endsAt.toLocalTime())) {
+                continue;
+            }
+
+            if (overlapsAvailabilityBlock(startsAt, endsAt, availabilityBlocks)) {
+                continue;
+            }
+
+            if (usedHelmets(startsAt, endsAt, bookings) + helmetsCount <= bookingProperties.getMaxConcurrentBookings()) {
+                slots++;
+            }
+        }
+
+        return slots;
+    }
+
+    private boolean overlapsAvailabilityBlock(
+            LocalDateTime startsAt,
+            LocalDateTime endsAt,
+            List<AvailabilityBlock> availabilityBlocks
+    ) {
+        return availabilityBlocks.stream()
+                .anyMatch(block -> block.getStartsAt().isBefore(endsAt) && block.getEndsAt().isAfter(startsAt));
+    }
+
+    private int usedHelmets(LocalDateTime startsAt, LocalDateTime endsAt, List<Booking> bookings) {
+        return bookings.stream()
+                .filter(booking -> booking.getStartsAt().isBefore(endsAt) && booking.getEndsAt().isAfter(startsAt))
+                .mapToInt(Booking::getHelmetsCount)
+                .sum();
     }
 
     private String generatePaymentUploadToken() {
@@ -420,6 +547,7 @@ public class BookingService {
                 b.getService().getSlug(),
                 b.getService().getTitle(),
                 b.getService().getDurationMinutes(),
+                b.getHelmetsCount(),
                 b.getService().getPrice(),
                 VrService.CURRENCY,
                 b.getCustomerName(),
@@ -437,7 +565,8 @@ public class BookingService {
     private BookingSlotResponse toSlotResponse(Booking b) {
         return new BookingSlotResponse(
                 b.getStartsAt(),
-                b.getEndsAt()
+                b.getEndsAt(),
+                b.getHelmetsCount()
         );
     }
 
@@ -447,6 +576,7 @@ public class BookingService {
                 b.getService().getSlug(),
                 b.getService().getTitle(),
                 b.getService().getDurationMinutes(),
+                b.getHelmetsCount(),
                 b.getService().getPrice(),
                 VrService.CURRENCY,
                 b.getCustomerName(),
@@ -503,5 +633,9 @@ public class BookingService {
 
     private String formatTime(LocalTime time) {
         return time.format(TIME_FORMATTER);
+    }
+
+    private int toMinutes(LocalTime time) {
+        return time.getHour() * 60 + time.getMinute();
     }
 }

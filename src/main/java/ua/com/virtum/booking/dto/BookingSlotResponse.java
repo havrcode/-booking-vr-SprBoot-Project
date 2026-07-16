@@ -4,5 +4,6 @@ import java.time.LocalDateTime;
 
 public record BookingSlotResponse(
         LocalDateTime startsAt,
-        LocalDateTime endsAt
+        LocalDateTime endsAt,
+        Integer helmetsCount
 ) {}

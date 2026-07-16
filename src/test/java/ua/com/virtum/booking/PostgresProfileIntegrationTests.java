@@ -62,7 +62,7 @@ class PostgresProfileIntegrationTests {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(14)
                 .withHour(12)
-                .withMinute(0)
+                .withMinute(30)
                 .withSecond(0)
                 .withNano(0);
         String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);

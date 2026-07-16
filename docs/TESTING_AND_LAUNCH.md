@@ -46,7 +46,7 @@ curl http://localhost:8080/api/v1/booking-settings
     "closeTime": "20:30",
     "breakStart": "14:30",
     "breakEnd": "15:30",
-    "slotStepMinutes": 30
+    "slotStepMinutes": 60
   },
   "payment": {
     "payAtClubEnabled": true,
@@ -65,12 +65,13 @@ curl -X POST http://localhost:8080/api/v1/bookings \
     "customerName": "Тестовий клієнт",
     "customerPhone": "+380501234567",
     "customerEmail": "test@example.com",
-    "startsAt": "2026-08-01T10:00:00",
+    "startsAt": "2026-08-01T10:30:00",
+    "helmetsCount": 1,
     "paymentMethod": "PAY_AT_CLUB"
   }'
 ```
 
-За замовчуванням `MAX_CONCURRENT_BOOKINGS=2`, тому два запити на той самий час мають пройти, а третій має повернути `409 Conflict`. Слот, який перетинає обід `14:30-15:30`, також має повертати `409`.
+За замовчуванням `MAX_CONCURRENT_BOOKINGS=2`, тому два запити на той самий час по 1 шолому мають пройти, а третій має повернути `409 Conflict`. Один запит із `helmetsCount: 2` займає обидва шоломи на цей час. Слот, який перетинає обід `14:30-15:30`, також має повертати `409`.
 
 Public endpoint зайнятих інтервалів:
 
@@ -135,9 +136,9 @@ PAYMENT_CARD_BANK=Тестовий банк
 ## 5. Тест закритого слота
 
 1. В адмінці відкрий `Доступність`.
-2. Закрий майбутній час, наприклад `2026-08-01 15:00-16:00`.
+2. Закрий майбутній час, наприклад `2026-08-01 15:30-16:30`.
 3. Відкрий widget або public API.
-4. Спробуй забронювати послугу на `2026-08-01T15:00:00`.
+4. Спробуй забронювати послугу на `2026-08-01T15:30:00`.
 5. Очікувано: backend повертає `409`, widget не дає обрати цей слот.
 6. Видали блокування в адмінці.
 7. Спробуй ще раз: бронювання має пройти.
@@ -165,7 +166,7 @@ BOOKING_OPEN_TIME=09:30
 BOOKING_CLOSE_TIME=20:30
 BOOKING_BREAK_START=14:30
 BOOKING_BREAK_END=15:30
-BOOKING_SLOT_STEP_MINUTES=30
+BOOKING_SLOT_STEP_MINUTES=60
 PAYMENT_PAY_AT_CLUB_ENABLED=true
 PAYMENT_CARD_TRANSFER_ENABLED=true
 PAYMENT_CARD_HOLDER=<card-holder>
@@ -204,7 +205,7 @@ https://booking-api.virtum-vr.com.ua
     openTime: "09:30",
     closeTime: "20:30",
     breaks: [{ start: "14:30", end: "15:30", label: "Обід" }],
-    slotStepMinutes: 30
+    slotStepMinutes: 60
   };
 </script>
 <script defer src="https://booking-api.virtum-vr.com.ua/widget/booking-widget.js"></script>

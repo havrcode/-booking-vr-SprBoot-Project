@@ -230,6 +230,7 @@ ADMIN_API_KEY
 Зараз seed data:
 
 - `vr-party-60`
+- `vr-arena-120`
 - `vr-quest-90`
 - `vr-kids-45`
 
@@ -258,6 +259,7 @@ Endpoints:
 GET  /api/v1/services
 POST /api/v1/bookings
 GET  /api/v1/bookings?date=YYYY-MM-DD
+GET  /api/v1/booking-days?from=YYYY-MM-DD&to=YYYY-MM-DD&serviceSlug=...&helmetsCount=1
 ```
 
 Використовується сайтом `virtum-vr.com.ua` та JS-клієнтом з `docs/frontend/virtum-booking-api.js`.
@@ -357,7 +359,8 @@ Payload для створення бронювання:
   "customerName": "Іван Петренко",
   "customerPhone": "+380501234567",
   "customerEmail": "ivan@example.com",
-  "startsAt": "2026-05-20T14:00:00"
+  "startsAt": "2026-05-20T09:30:00",
+  "helmetsCount": 1
 }
 ```
 
@@ -368,6 +371,7 @@ Payload для створення бронювання:
 - `customerPhone` має простий phone pattern;
 - `customerEmail` має email format;
 - `startsAt` має бути в майбутньому.
+- `helmetsCount` optional, за замовчуванням `1`, максимум дорівнює `MAX_CONCURRENT_BOOKINGS`.
 
 ### `BookingResponse.java`
 
@@ -429,8 +433,8 @@ Payload для закриття часу:
 
 ```json
 {
-  "startsAt": "2026-05-20T14:00:00",
-  "endsAt": "2026-05-20T16:00:00",
+  "startsAt": "2026-05-20T15:30:00",
+  "endsAt": "2026-05-20T17:30:00",
   "reason": "Приватна подія"
 }
 ```
@@ -783,7 +787,7 @@ Widget підключається до кнопки на існуючому са
 data-virtum-booking-open
 ```
 
-Він не використовує Admin API key. Публічна частина викликає тільки `/api/v1/services`, `/api/v1/bookings?date=...`, `/api/v1/availability-blocks?date=...` і `POST /api/v1/bookings`.
+Він не використовує Admin API key. Публічна частина викликає тільки `/api/v1/services`, `/api/v1/booking-days?from=...&to=...`, `/api/v1/bookings?date=...`, `/api/v1/availability-blocks?date=...` і `POST /api/v1/bookings`.
 
 ## Tests
 

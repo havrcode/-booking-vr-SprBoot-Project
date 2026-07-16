@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import ua.com.virtum.booking.dto.BookingDayAvailabilityResponse;
 import ua.com.virtum.booking.dto.BookingSettingsResponse;
 import ua.com.virtum.booking.dto.BookingSlotResponse;
 import ua.com.virtum.booking.dto.BookingResponse;
@@ -51,5 +52,15 @@ public class BookingController {
     @GetMapping("/bookings")
     public List<BookingSlotResponse> dayBookings(@RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return bookingService.listDay(date);
+    }
+
+    @GetMapping("/booking-days")
+    public List<BookingDayAvailabilityResponse> bookingDays(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @RequestParam String serviceSlug,
+            @RequestParam(required = false) Integer helmetsCount
+    ) {
+        return bookingService.listDayAvailability(from, to, serviceSlug, helmetsCount);
     }
 }

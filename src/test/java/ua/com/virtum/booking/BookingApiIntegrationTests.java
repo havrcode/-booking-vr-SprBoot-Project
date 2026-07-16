@@ -44,6 +44,7 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$.length()", greaterThan(0)))
                 .andExpect(jsonPath("$[0].slug").exists())
                 .andExpect(jsonPath("$[0].title").exists())
+                .andExpect(jsonPath("$[?(@.slug == 'vr-arena-120')]", hasSize(1)))
                 .andExpect(jsonPath("$[0].currency").value("UAH"));
     }
 
@@ -56,7 +57,7 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$.schedule.closeTime").value("20:30"))
                 .andExpect(jsonPath("$.schedule.breakStart").value("14:30"))
                 .andExpect(jsonPath("$.schedule.breakEnd").value("15:30"))
-                .andExpect(jsonPath("$.schedule.slotStepMinutes").value(30))
+                .andExpect(jsonPath("$.schedule.slotStepMinutes").value(60))
                 .andExpect(jsonPath("$.payment.payAtClubEnabled").value(true))
                 .andExpect(jsonPath("$.payment.cardTransferEnabled").value(true))
                 .andExpect(jsonPath("$.payment.cardNumber").value("4444555566667777"));
@@ -81,7 +82,7 @@ class BookingApiIntegrationTests {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(7)
                 .withHour(10)
-                .withMinute(0)
+                .withMinute(30)
                 .withSecond(0)
                 .withNano(0);
         String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
@@ -103,6 +104,7 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$.serviceSlug").value("vr-party-60"))
                 .andExpect(jsonPath("$.startsAt").value(startsAtValue))
                 .andExpect(jsonPath("$.currency").value("UAH"))
+                .andExpect(jsonPath("$.helmetsCount").value(1))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.paymentMethod").value("PAY_AT_CLUB"))
                 .andExpect(jsonPath("$.paymentStatus").value("UNPAID"));
@@ -112,6 +114,7 @@ class BookingApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].startsAt").value(startsAtValue))
                 .andExpect(jsonPath("$[0].endsAt").exists())
+                .andExpect(jsonPath("$[0].helmetsCount").value(1))
                 .andExpect(jsonPath("$[0].customerName").doesNotExist())
                 .andExpect(jsonPath("$[0].customerPhone").doesNotExist())
                 .andExpect(jsonPath("$[0].customerEmail").doesNotExist());
@@ -130,6 +133,27 @@ class BookingApiIntegrationTests {
     }
 
     @Test
+    void exposesDayAvailabilityForCalendar() throws Exception {
+        LocalDateTime startsAt = LocalDateTime.now()
+                .plusDays(18)
+                .withHour(9)
+                .withMinute(30)
+                .withSecond(0)
+                .withNano(0);
+        String dateValue = startsAt.toLocalDate().toString();
+
+        mockMvc.perform(get("/api/v1/booking-days")
+                        .param("from", dateValue)
+                        .param("to", dateValue)
+                        .param("serviceSlug", "vr-party-60")
+                        .param("helmetsCount", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].date").value(dateValue))
+                .andExpect(jsonPath("$[0].available").value(true))
+                .andExpect(jsonPath("$[0].availableSlots").exists());
+    }
+
+    @Test
     void rejectsLunchBreakAndClosedHours() throws Exception {
         LocalDateTime lunchStartsAt = LocalDateTime.now()
                 .plusDays(17)
@@ -140,7 +164,7 @@ class BookingApiIntegrationTests {
         LocalDateTime lateStartsAt = lunchStartsAt
                 .plusDays(1)
                 .withHour(20)
-                .withMinute(0);
+                .withMinute(30);
 
         mockMvc.perform(post("/api/v1/bookings")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -160,7 +184,7 @@ class BookingApiIntegrationTests {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(8)
                 .withHour(16)
-                .withMinute(0)
+                .withMinute(30)
                 .withSecond(0)
                 .withNano(0);
         String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
@@ -195,6 +219,7 @@ class BookingApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(bookingId))
                 .andExpect(jsonPath("$[0].currency").value("UAH"))
+                .andExpect(jsonPath("$[0].helmetsCount").value(1))
                 .andExpect(jsonPath("$[0].status").value("CONFIRMED"));
 
         mockMvc.perform(patch("/api/v1/admin/bookings/{id}/status", bookingId)
@@ -216,7 +241,7 @@ class BookingApiIntegrationTests {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(12)
                 .withHour(11)
-                .withMinute(0)
+                .withMinute(30)
                 .withSecond(0)
                 .withNano(0);
         String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
@@ -346,7 +371,7 @@ class BookingApiIntegrationTests {
         LocalDateTime startsAt = LocalDateTime.now()
                 .plusDays(9)
                 .withHour(18)
-                .withMinute(0)
+                .withMinute(30)
                 .withSecond(0)
                 .withNano(0);
         LocalDateTime endsAt = startsAt.plusHours(1);

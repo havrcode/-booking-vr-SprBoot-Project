@@ -61,7 +61,7 @@ docs/TESTING_AND_LAUNCH.md
     "closeTime": "20:30",
     "breakStart": "14:30",
     "breakEnd": "15:30",
-    "slotStepMinutes": 30
+    "slotStepMinutes": 60
   },
   "payment": {
     "payAtClubEnabled": true,
@@ -82,7 +82,8 @@ docs/TESTING_AND_LAUNCH.md
   "customerName": "Іван Петренко",
   "customerPhone": "+380501234567",
   "customerEmail": "ivan@example.com",
-  "startsAt": "2026-05-20T14:00:00",
+  "startsAt": "2026-05-20T09:30:00",
+  "helmetsCount": 1,
   "paymentMethod": "PAY_AT_CLUB"
 }
 ```
@@ -103,8 +104,29 @@ Optional upload скріну підтвердження оплати. Викор
 ```json
 [
   {
-    "startsAt": "2026-05-20T14:00:00",
-    "endsAt": "2026-05-20T15:00:00"
+    "startsAt": "2026-05-20T09:30:00",
+    "endsAt": "2026-05-20T10:30:00",
+    "helmetsCount": 1
+  }
+]
+```
+
+### `GET /api/v1/booking-days`
+Доступність днів для календаря на сайті. Діапазон до 62 днів.
+
+```text
+from=2026-05-20
+to=2026-07-20
+serviceSlug=vr-party-60
+helmetsCount=1
+```
+
+```json
+[
+  {
+    "date": "2026-05-20",
+    "available": true,
+    "availableSlots": 8
   }
 ]
 ```
@@ -170,7 +192,7 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `BOOKING_CLOSE_TIME` | `20:30` |
 | `BOOKING_BREAK_START` | `14:30` |
 | `BOOKING_BREAK_END` | `15:30` |
-| `BOOKING_SLOT_STEP_MINUTES` | `30` |
+| `BOOKING_SLOT_STEP_MINUTES` | `60` |
 | `PAYMENT_PAY_AT_CLUB_ENABLED` | `true` |
 | `PAYMENT_CARD_TRANSFER_ENABLED` | `true` |
 | `PAYMENT_CARD_HOLDER` | `Virtum VR` |
@@ -186,6 +208,7 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `TELEGRAM_CHAT_ID` | `123456789` |
 
 `MAX_CONCURRENT_BOOKINGS` - це кількість бронювань, які можна прийняти на один і той самий часовий інтервал. Для двох активних VR-шоломів використовується `2`. Обідня пауза `14:30-15:30` і час поза графіком `09:30-20:30` блокуються backend-ом.
+`BOOKING_SLOT_STEP_MINUTES=60` означає, що стартові слоти йдуть щогодини від `09:30`: `09:30`, `10:30`, `11:30` тощо.
 
 Щоб показати клієнту реквізити карти, вистав `PAYMENT_CARD_TRANSFER_ENABLED=true` і заповни `PAYMENT_CARD_NUMBER`, `PAYMENT_CARD_HOLDER`, `PAYMENT_CARD_BANK`. Файли зі скрінами оплати зберігаються у `PAYMENT_PROOFS_DIR`; ця директорія не повинна комітитись у git.
 
@@ -225,6 +248,7 @@ customerPhone
 customerEmail
 date
 time
+helmetsCount
 paymentMethod
 paymentProof
 ```
@@ -335,8 +359,8 @@ to=2026-05-31
 
 ```json
 {
-  "startsAt": "2026-05-20T14:00:00",
-  "endsAt": "2026-05-20T16:00:00",
+  "startsAt": "2026-05-20T15:30:00",
+  "endsAt": "2026-05-20T17:30:00",
   "reason": "Приватна подія"
 }
 ```

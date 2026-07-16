@@ -10,5 +10,6 @@ public record CreateBookingRequest(
         @NotBlank @Pattern(regexp = "^[+0-9 ()-]{7,20}$") String customerPhone,
         @NotBlank @Email String customerEmail,
         @NotNull @Future LocalDateTime startsAt,
+        @Min(1) Integer helmetsCount,
         PaymentMethod paymentMethod
 ) {}
