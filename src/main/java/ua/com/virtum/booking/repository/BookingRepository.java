@@ -1,6 +1,8 @@
 package ua.com.virtum.booking.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import ua.com.virtum.booking.entity.Booking;
 import ua.com.virtum.booking.entity.BookingStatus;
 
@@ -12,6 +14,19 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
             BookingStatus status,
             LocalDateTime end,
             LocalDateTime start
+    );
+
+    @Query("""
+            select coalesce(sum(b.helmetsCount), 0)
+            from Booking b
+            where b.status = :status
+                and b.startsAt < :end
+                and b.endsAt > :start
+            """)
+    long sumHelmetsCountByStatusAndPeriod(
+            @Param("status") BookingStatus status,
+            @Param("end") LocalDateTime end,
+            @Param("start") LocalDateTime start
     );
 
     List<Booking> findByStatusAndStartsAtLessThanAndEndsAtGreaterThan(

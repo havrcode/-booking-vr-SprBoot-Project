@@ -107,7 +107,7 @@ BOOKING_OPEN_TIME=09:30
 BOOKING_CLOSE_TIME=20:30
 BOOKING_BREAK_START=14:30
 BOOKING_BREAK_END=15:30
-BOOKING_SLOT_STEP_MINUTES=30
+BOOKING_SLOT_STEP_MINUTES=60
 
 PAYMENT_PAY_AT_CLUB_ENABLED=true
 PAYMENT_CARD_TRANSFER_ENABLED=true
@@ -127,7 +127,7 @@ TELEGRAM_BOT_TOKEN=replace_with_bot_token
 TELEGRAM_CHAT_ID=replace_with_chat_id
 ```
 
-`MAX_CONCURRENT_BOOKINGS=2` означає, що на один і той самий час можна прийняти дві групи або два активні VR-шоломи. Графік `09:30-20:30`, а `14:30-15:30` закрито як обідня пауза.
+`MAX_CONCURRENT_BOOKINGS=2` означає, що на один і той самий час можна прийняти два активні VR-шоломи. Клієнт може забронювати `1` або `2` шоломи одним бронюванням. Графік `09:30-20:30`, `14:30-15:30` закрито як обідня пауза, а стартові слоти йдуть щогодини від `09:30`.
 
 ## 6. PostgreSQL
 
@@ -388,7 +388,7 @@ TELEGRAM_CHAT_ID=<chat-id>
     openTime: "09:30",
     closeTime: "20:30",
     breaks: [{ start: "14:30", end: "15:30", label: "Обід" }],
-    slotStepMinutes: 30
+    slotStepMinutes: 60
   };
 </script>
 <script defer src="https://booking-api.virtum-vr.com.ua/widget/booking-widget.js"></script>

@@ -26,7 +26,7 @@ public class BookingProperties {
     private LocalTime breakEnd = LocalTime.of(15, 30);
 
     @Min(1)
-    private int slotStepMinutes = 30;
+    private int slotStepMinutes = 60;
 
     public int getMaxConcurrentBookings() {
         return maxConcurrentBookings;

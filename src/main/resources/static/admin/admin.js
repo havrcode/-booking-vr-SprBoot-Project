@@ -503,7 +503,7 @@ function resetServiceForm() {
 }
 
 function resetAvailabilityForm() {
-  const startsAt = roundToNextHalfHour(new Date());
+  const startsAt = roundToNextBookingSlot(new Date());
   const endsAt = new Date(startsAt);
   endsAt.setHours(startsAt.getHours() + 1);
 
@@ -552,6 +552,7 @@ function renderRows(bookings) {
         <td>
           <strong>${escapeHtml(booking.serviceTitle)}</strong>
           <div class="secondary">${booking.durationMinutes} хв · ${formatPrice(booking.price)}</div>
+          <div class="secondary">${helmetLabel(booking.helmetsCount || 1)}</div>
         </td>
         <td>
           <div class="client">
@@ -699,6 +700,11 @@ function paymentMethodLabel(method) {
   return "У клубі";
 }
 
+function helmetLabel(count) {
+  const value = Number(count) || 1;
+  return value === 1 ? "1 шолом" : `${value} шоломи`;
+}
+
 function serviceBadge(active) {
   const cssClass = active ? "confirmed" : "cancelled";
   const label = active ? "Активна" : "Неактивна";
@@ -751,12 +757,15 @@ function normalizeDateTimeLocalValue(value) {
   return value.length === 16 ? `${value}:00` : value;
 }
 
-function roundToNextHalfHour(date) {
+function roundToNextBookingSlot(date) {
   const rounded = new Date(date);
   rounded.setSeconds(0, 0);
   const minutes = rounded.getMinutes();
-  const minutesToAdd = minutes < 30 ? 30 - minutes : 60 - minutes;
-  rounded.setMinutes(minutes + minutesToAdd);
+  if (minutes < 30) {
+    rounded.setMinutes(30);
+  } else {
+    rounded.setHours(rounded.getHours() + 1, 30);
+  }
   return rounded;
 }
 

@@ -69,6 +69,7 @@ public class TelegramBookingNotifier implements BookingNotifier {
                 Клієнт: %s
                 Телефон: %s
                 Email: %s
+                Шоломи: %s
                 Дата: %s
                 Час: %s-%s
                 Статус: %s
@@ -78,6 +79,7 @@ public class TelegramBookingNotifier implements BookingNotifier {
                 html(booking.customerName()),
                 html(booking.customerPhone()),
                 html(booking.customerEmail()),
+                booking.helmetsCount(),
                 booking.startsAt().format(DATE_FORMATTER),
                 booking.startsAt().format(TIME_FORMATTER),
                 booking.endsAt().format(TIME_FORMATTER),
@@ -96,4 +98,3 @@ public class TelegramBookingNotifier implements BookingNotifier {
                 .replace(">", "&gt;");
     }
 }
-

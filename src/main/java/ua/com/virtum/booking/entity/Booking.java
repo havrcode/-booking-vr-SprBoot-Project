@@ -21,6 +21,8 @@ public class Booking {
     private LocalDateTime startsAt;
     @Column(nullable = false)
     private LocalDateTime endsAt;
+    @Column(nullable = false)
+    private int helmetsCount = 1;
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
     private BookingStatus status = BookingStatus.CONFIRMED;
@@ -55,6 +57,8 @@ public class Booking {
     public void setStartsAt(LocalDateTime startsAt) { this.startsAt = startsAt; }
     public LocalDateTime getEndsAt() { return endsAt; }
     public void setEndsAt(LocalDateTime endsAt) { this.endsAt = endsAt; }
+    public int getHelmetsCount() { return helmetsCount; }
+    public void setHelmetsCount(int helmetsCount) { this.helmetsCount = helmetsCount; }
     public BookingStatus getStatus() { return status; }
     public void setStatus(BookingStatus status) { this.status = status; }
     public PaymentMethod getPaymentMethod() { return paymentMethod; }

@@ -42,6 +42,17 @@ export function listBookingsByDate(date) {
   return request(`/api/v1/bookings?date=${encodeURIComponent(date)}`);
 }
 
+export function listBookingDays({ from, to, serviceSlug, helmetsCount = 1 }) {
+  const params = new URLSearchParams({
+    from,
+    to,
+    serviceSlug,
+    helmetsCount: String(helmetsCount),
+  });
+
+  return request(`/api/v1/booking-days?${params}`);
+}
+
 export function createBooking(payload) {
   return request("/api/v1/bookings", {
     method: "POST",
@@ -112,6 +123,7 @@ export function readBookingForm(form) {
     customerPhone: String(data.get("customerPhone") || "").trim(),
     customerEmail: String(data.get("customerEmail") || "").trim(),
     startsAt: toLocalIsoDateTime(data.get("date"), data.get("time")),
+    helmetsCount: Number(data.get("helmetsCount") || 1),
     paymentMethod: String(data.get("paymentMethod") || "PAY_AT_CLUB"),
   };
 }
