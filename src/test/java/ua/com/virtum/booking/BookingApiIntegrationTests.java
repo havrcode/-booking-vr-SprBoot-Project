@@ -49,8 +49,9 @@ class BookingApiIntegrationTests {
                 .andExpect(jsonPath("$[0].title").exists())
                 .andExpect(jsonPath("$[?(@.slug == 'vr-party-60')]", hasSize(1)))
                 .andExpect(jsonPath("$[?(@.slug == 'vr-party-60' && @.price == 400.00)]", hasSize(1)))
-                .andExpect(jsonPath("$[?(@.slug == 'vr-sprint-120')]", hasSize(1)))
-                .andExpect(jsonPath("$[?(@.slug == 'vr-sprint-120' && @.price == 800.00)]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-marathon-120')]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-marathon-120' && @.price == 800.00)]", hasSize(1)))
+                .andExpect(jsonPath("$[?(@.slug == 'vr-sprint-120')]", hasSize(0)))
                 .andExpect(jsonPath("$[?(@.slug == 'vr-arena-120')]", hasSize(0)))
                 .andExpect(jsonPath("$[?(@.slug == 'vr-quest-90')]", hasSize(0)))
                 .andExpect(jsonPath("$[?(@.slug == 'vr-kids-45')]", hasSize(0)))
@@ -163,7 +164,7 @@ class BookingApiIntegrationTests {
     }
 
     @Test
-    void pricesWeekendSprintBookingByHourlyWeekendRate() throws Exception {
+    void pricesWeekendMarathonBookingByHourlyWeekendRate() throws Exception {
         LocalDateTime startsAt = LocalDate.now()
                 .plusWeeks(8)
                 .with(TemporalAdjusters.nextOrSame(DayOfWeek.SATURDAY))
@@ -172,7 +173,7 @@ class BookingApiIntegrationTests {
 
         String payload = """
                 {
-                  "serviceSlug": "vr-sprint-120",
+                  "serviceSlug": "vr-marathon-120",
                   "customerName": "Клієнт вихідного дня",
                   "customerPhone": "+380501234577",
                   "customerEmail": "weekend-price@example.com",
@@ -184,11 +185,62 @@ class BookingApiIntegrationTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(payload))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.serviceSlug").value("vr-sprint-120"))
-                .andExpect(jsonPath("$.serviceTitle").value("VR-спрінт 120 хв"))
+                .andExpect(jsonPath("$.serviceSlug").value("vr-marathon-120"))
+                .andExpect(jsonPath("$.serviceTitle").value("VR-марафон 120 хв"))
                 .andExpect(jsonPath("$.durationMinutes").value(120))
                 .andExpect(jsonPath("$.price").value(1000.00))
                 .andExpect(jsonPath("$.currency").value("UAH"));
+    }
+
+    @Test
+    void rejectsStalePastSlotWithUkrainianMessage() throws Exception {
+        LocalDateTime startsAt = LocalDate.now()
+                .minusDays(1)
+                .atTime(9, 30);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        String payload = """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Клієнт зі старою сторінкою",
+                  "customerPhone": "+380501234588",
+                  "startsAt": "%s"
+                }
+                """.formatted(startsAtValue);
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("уже неактивний")));
+    }
+
+    @Test
+    void createsBookingWithOptionalCommentAndWithoutEmail() throws Exception {
+        LocalDateTime startsAt = LocalDateTime.now()
+                .plusDays(36)
+                .withHour(17)
+                .withMinute(30)
+                .withSecond(0)
+                .withNano(0);
+        String startsAtValue = startsAt.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+
+        String payload = """
+                {
+                  "serviceSlug": "vr-party-60",
+                  "customerName": "Клієнт без email",
+                  "customerPhone": "+380501234589",
+                  "customerComment": "Подзвоніть перед бронюванням",
+                  "startsAt": "%s"
+                }
+                """.formatted(startsAtValue);
+
+        mockMvc.perform(post("/api/v1/bookings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(payload))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.customerName").value("Клієнт без email"))
+                .andExpect(jsonPath("$.customerComment").value("Подзвоніть перед бронюванням"));
     }
 
     @Test

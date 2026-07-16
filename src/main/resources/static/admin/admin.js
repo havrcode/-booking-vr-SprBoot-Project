@@ -544,6 +544,10 @@ function renderRows(bookings) {
     const isCancelled = booking.status === "CANCELLED";
     const isPaid = booking.paymentStatus === "PAID";
     const hasPaymentProof = booking.paymentProof && booking.paymentProof.uploaded;
+    const customerEmail = booking.customerEmail ? `<span class="secondary">${escapeHtml(booking.customerEmail)}</span>` : "";
+    const customerComment = booking.customerComment
+      ? `<span class="secondary">Коментар: ${escapeHtml(booking.customerComment)}</span>`
+      : "";
 
     return `
       <tr>
@@ -563,7 +567,8 @@ function renderRows(bookings) {
         <td>
           <div class="contact">
             <span>${escapeHtml(booking.customerPhone)}</span>
-            <span class="secondary">${escapeHtml(booking.customerEmail)}</span>
+            ${customerEmail}
+            ${customerComment}
           </div>
         </td>
         <td>

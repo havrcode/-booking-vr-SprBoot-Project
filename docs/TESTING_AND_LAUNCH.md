@@ -64,7 +64,7 @@ curl -X POST http://localhost:8080/api/v1/bookings \
     "serviceSlug": "vr-party-60",
     "customerName": "Тестовий клієнт",
     "customerPhone": "+380501234567",
-    "customerEmail": "test@example.com",
+    "customerComment": "Тестове бронювання",
     "startsAt": "2026-08-01T10:30:00",
     "helmetsCount": 1,
     "paymentMethod": "PAY_AT_CLUB"
@@ -79,7 +79,7 @@ Public endpoint зайнятих інтервалів:
 curl "http://localhost:8080/api/v1/bookings?date=2026-08-01"
 ```
 
-Він має повертати тільки `startsAt` і `endsAt`, без `customerName`, `customerPhone` або `customerEmail`.
+Він має повертати тільки `startsAt` і `endsAt`, без `customerName`, `customerPhone`, `customerEmail` або `customerComment`.
 
 ## 3. Admin UI
 

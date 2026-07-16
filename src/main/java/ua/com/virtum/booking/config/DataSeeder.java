@@ -14,7 +14,7 @@ public class DataSeeder {
     CommandLineRunner seed(VrServiceRepository repository) {
         return args -> {
             seedIfMissing(repository, "vr-party-60", "VR-вечірка 60 хв", 60, "400");
-            seedIfMissing(repository, "vr-sprint-120", "VR-спрінт 120 хв", 120, "800");
+            seedIfMissing(repository, "vr-marathon-120", "VR-марафон 120 хв", 120, "800");
         };
     }
 

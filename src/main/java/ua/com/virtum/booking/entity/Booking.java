@@ -15,8 +15,10 @@ public class Booking {
     private String customerName;
     @Column(nullable = false, length = 32)
     private String customerPhone;
-    @Column(nullable = false, length = 255)
+    @Column(length = 255)
     private String customerEmail;
+    @Column(length = 500)
+    private String customerComment;
     @Column(nullable = false)
     private LocalDateTime startsAt;
     @Column(nullable = false)
@@ -42,7 +44,7 @@ public class Booking {
     private String paymentProofContentType;
     private LocalDateTime paymentProofUploadedAt;
     @Column(nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
     public Long getId() { return id; }
     public VrService getService() { return service; }
@@ -53,6 +55,8 @@ public class Booking {
     public void setCustomerPhone(String customerPhone) { this.customerPhone = customerPhone; }
     public String getCustomerEmail() { return customerEmail; }
     public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
+    public String getCustomerComment() { return customerComment; }
+    public void setCustomerComment(String customerComment) { this.customerComment = customerComment; }
     public LocalDateTime getStartsAt() { return startsAt; }
     public void setStartsAt(LocalDateTime startsAt) { this.startsAt = startsAt; }
     public LocalDateTime getEndsAt() { return endsAt; }
@@ -76,4 +80,5 @@ public class Booking {
     public LocalDateTime getPaymentProofUploadedAt() { return paymentProofUploadedAt; }
     public void setPaymentProofUploadedAt(LocalDateTime paymentProofUploadedAt) { this.paymentProofUploadedAt = paymentProofUploadedAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

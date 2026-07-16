@@ -6,7 +6,7 @@
 - REST API для отримання послуг, створення бронювання, перегляду бронювань на день.
 - Валідація payload та помилки у JSON форматі.
 - Захист від переповнення слотів з configurable capacity через `MAX_CONCURRENT_BOOKINGS`.
-- Public API для зайнятих слотів не віддає імʼя, телефон або email клієнта.
+- Public API для зайнятих слотів не віддає імʼя, телефон, email або коментар клієнта.
 - Початкові дані з VR-послугами.
 - CORS налаштовано через `app.cors.allowed-origins`.
 - Flyway міграції для схеми бази даних.
@@ -49,8 +49,8 @@ docs/TESTING_AND_LAUNCH.md
     "active": true
   },
   {
-    "slug": "vr-sprint-120",
-    "title": "VR-спрінт 120 хв",
+    "slug": "vr-marathon-120",
+    "title": "VR-марафон 120 хв",
     "durationMinutes": 120,
     "price": 800.00,
     "currency": "UAH",
@@ -90,12 +90,14 @@ docs/TESTING_AND_LAUNCH.md
   "serviceSlug": "vr-party-60",
   "customerName": "Іван Петренко",
   "customerPhone": "+380501234567",
-  "customerEmail": "ivan@example.com",
+  "customerComment": "День народження, будемо з дітьми",
   "startsAt": "2026-05-20T09:30:00",
   "helmetsCount": 1,
   "paymentMethod": "PAY_AT_CLUB"
 }
 ```
+
+`customerEmail` можна передати додатково, але для публічної форми він не обовʼязковий.
 
 Підтримувані `paymentMethod`:
 
@@ -191,6 +193,7 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | --- | --- |
 | `SPRING_PROFILES_ACTIVE` | `prod` |
 | `SERVER_PORT` | `8080` |
+| `APP_TIME_ZONE` | `Europe/Kyiv` |
 | `DB_HOST` | `localhost` |
 | `DB_PORT` | `5432` |
 | `DB_NAME` | `virtum_booking` |
@@ -215,6 +218,12 @@ SPRING_PROFILES_ACTIVE=prod mvn spring-boot:run
 | `TELEGRAM_NOTIFICATIONS_ENABLED` | `true` |
 | `TELEGRAM_BOT_TOKEN` | `123456:bot-token` |
 | `TELEGRAM_CHAT_ID` | `123456789` |
+
+### Час і timezone
+
+Бізнес-час бронювання рахується в timezone `Europe/Kyiv` через `APP_TIME_ZONE`. Ця зона автоматично враховує перехід України на літній і зимовий час.
+
+Синхронізацію системного годинника має робити сервер через NTP (`systemd-timesyncd`, `chrony` або аналог). Spring Boot не змінює системний час самостійно: це потребує root-доступу і може ламати інші сервіси. Якщо під час NTP-синхронізації немає мережі, системний сервіс часу сам повторює спроби без помилки для застосунку.
 
 `MAX_CONCURRENT_BOOKINGS` - це кількість бронювань, які можна прийняти на один і той самий часовий інтервал. Для двох активних VR-шоломів використовується `2`. Обідня пауза `14:30-15:30` і час поза графіком `09:30-20:30` блокуються backend-ом.
 `BOOKING_SLOT_STEP_MINUTES=60` означає, що стартові слоти йдуть щогодини від `09:30`: `09:30`, `10:30`, `11:30` тощо.
@@ -254,7 +263,7 @@ https://booking-api.virtum-vr.com.ua/widget/booking-widget.js
 serviceSlug
 customerName
 customerPhone
-customerEmail
+customerComment
 date
 time
 helmetsCount
@@ -344,8 +353,8 @@ PAID
 
 ```json
 {
-  "slug": "vr-sprint-120",
-  "title": "VR-спрінт 120 хв",
+  "slug": "vr-marathon-120",
+  "title": "VR-марафон 120 хв",
   "durationMinutes": 120,
   "price": 800.00,
   "active": true

@@ -59,6 +59,7 @@
   let dateInput;
   let dayCalendar;
   let timeInput;
+  let timeField;
   let timeSlotGrid;
   let messageNode;
   let paymentDetailsNode;
@@ -130,7 +131,7 @@
               <span class="virtum-booking-field-label">4. Оберіть час</span>
               <input name="time" type="hidden">
               <div class="virtum-booking-time-grid" role="radiogroup" aria-label="Оберіть час бронювання">
-                <p class="virtum-booking-time-empty">Оберіть дату</p>
+                <p class="virtum-booking-time-empty">Оберіть день у календарі</p>
               </div>
             </div>
           </div>
@@ -145,8 +146,8 @@
               <input name="customerPhone" type="tel" autocomplete="tel" required placeholder="+380501234567">
             </label>
             <label>
-              Email
-              <input name="customerEmail" type="email" autocomplete="email" required>
+              Коментар <span class="virtum-booking-muted">(необов'язково)</span>
+              <textarea name="customerComment" maxlength="500" rows="3" placeholder="Наприклад: день народження, зручний час для дзвінка"></textarea>
             </label>
           </div>
 
@@ -185,6 +186,7 @@
     dateInput = form.elements.date;
     dayCalendar = root.querySelector(".virtum-booking-day-calendar");
     timeInput = form.elements.time;
+    timeField = root.querySelector(".virtum-booking-time-field");
     timeSlotGrid = root.querySelector(".virtum-booking-time-grid");
     messageNode = root.querySelector(".virtum-booking-message");
     paymentDetailsNode = root.querySelector(".virtum-booking-payment-details");
@@ -557,6 +559,7 @@
     renderDayCalendar();
     renderServiceOptions();
     await loadBookingsForDate();
+    scrollToTimeSlots();
   }
 
   async function changeCalendarMonth(delta) {
@@ -618,7 +621,7 @@
     timeInput.value = "";
 
     if (!service || !date) {
-      renderTimeSlotMessage("Оберіть послугу і дату");
+      renderTimeSlotMessage("Оберіть день у календарі");
       return;
     }
 
@@ -669,7 +672,21 @@
       const usedHelmets = countOverlappingHelmets(startsAt, endsAt);
       const requestedHelmets = selectedHelmetsCount();
       const scheduleBreak = overlappingScheduleBreak(minute, minute + durationMinutes);
-      const closed = Boolean(scheduleBreak) || overlapsAvailabilityBlock(startsAt, endsAt);
+
+      if (scheduleBreak) {
+        if (minute === timeToMinutes(scheduleBreak.start)) {
+          slots.push({
+            disabled: true,
+            statusLabel: scheduleBreak.label,
+            label: `${scheduleBreak.start} - ${scheduleBreak.end}`,
+            value: "",
+          });
+        }
+
+        continue;
+      }
+
+      const closed = overlapsAvailabilityBlock(startsAt, endsAt);
       const availablePlaces = Math.max(config.maxConcurrentBookings - usedHelmets, 0);
       const booked = availablePlaces < requestedHelmets;
 
@@ -679,11 +696,9 @@
           ? "Недоступно"
           : booked
             ? availablePlaces > 0 ? `Лише ${availablePlaces}/${config.maxConcurrentBookings}` : "Зайнято"
-            : scheduleBreak
-              ? scheduleBreak.label
-              : closed
-                ? "Закрито"
-                : `Вільно ${availablePlaces}/${config.maxConcurrentBookings}`,
+            : closed
+              ? "Закрито"
+              : `Вільно ${availablePlaces}/${config.maxConcurrentBookings}`,
         label: `${time} - ${minutesToTime(minute + durationMinutes)}`,
         value: time,
       });
@@ -756,7 +771,7 @@
           serviceSlug: String(data.get("serviceSlug") || "").trim(),
           customerName: String(data.get("customerName") || "").trim(),
           customerPhone: String(data.get("customerPhone") || "").trim(),
-          customerEmail: String(data.get("customerEmail") || "").trim(),
+          customerComment: String(data.get("customerComment") || "").trim(),
           startsAt: `${data.get("date")}T${data.get("time")}:00`,
           helmetsCount: Number(data.get("helmetsCount") || 1),
           paymentMethod: String(data.get("paymentMethod") || "PAY_AT_CLUB"),
@@ -798,13 +813,19 @@
     const body = new FormData();
     body.append("file", file);
 
-    const response = await fetch(
-      `${config.apiBase}/api/v1/bookings/${booking.id}/payment-proof?token=${encodeURIComponent(booking.paymentUploadToken)}`,
-      {
-        method: "POST",
-        body,
-      }
-    );
+    let response;
+
+    try {
+      response = await fetch(
+        `${config.apiBase}/api/v1/bookings/${booking.id}/payment-proof?token=${encodeURIComponent(booking.paymentUploadToken)}`,
+        {
+          method: "POST",
+          body,
+        }
+      );
+    } catch (error) {
+      throw new Error("Не вдалося завантажити скрін оплати. Перевірте інтернет і спробуйте ще раз.");
+    }
 
     const contentType = response.headers.get("content-type") || "";
     const responseBody = contentType.includes("application/json")
@@ -821,14 +842,20 @@
   async function request(path, options = {}) {
     const { headers = {}, ...requestOptions } = options;
 
-    const response = await fetch(`${config.apiBase}${path}`, {
-      ...requestOptions,
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-        ...headers,
-      },
-    });
+    let response;
+
+    try {
+      response = await fetch(`${config.apiBase}${path}`, {
+        ...requestOptions,
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          ...headers,
+        },
+      });
+    } catch (error) {
+      throw new Error("Не вдалося підключитися до системи бронювання. Оновіть сторінку або спробуйте ще раз.");
+    }
 
     const contentType = response.headers.get("content-type") || "";
     const body = contentType.includes("application/json")
@@ -846,6 +873,10 @@
     if (status === 409) {
       const serverError = body && typeof body === "object" && body.error ? String(body.error) : "";
       const normalizedError = serverError.toLowerCase();
+
+      if (serverError) {
+        return serverError;
+      }
 
       if (normalizedError.includes("lunch")) {
         return "На цей час обідня пауза. Оберіть інший слот.";
@@ -867,6 +898,18 @@
     }
 
     if (status === 400) {
+      const fieldMessages = body && typeof body === "object" && body.fields
+        ? Object.values(body.fields).filter(Boolean)
+        : [];
+
+      if (fieldMessages.length) {
+        return String(fieldMessages[0]);
+      }
+
+      if (body && typeof body === "object" && body.error) {
+        return String(body.error);
+      }
+
       return "Перевірте дані у формі бронювання.";
     }
 
@@ -875,6 +918,15 @@
     }
 
     return "Не вдалося створити бронювання. Спробуйте ще раз.";
+  }
+
+  function scrollToTimeSlots() {
+    if (!timeField) {
+      return;
+    }
+
+    timeField.scrollIntoView({ behavior: "smooth", block: "start" });
+    timeSlotGrid.querySelector("[data-time]:not(:disabled)")?.focus({ preventScroll: true });
   }
 
   function normalizeApiBase(value) {

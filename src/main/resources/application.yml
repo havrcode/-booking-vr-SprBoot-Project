@@ -21,6 +21,8 @@ server:
   port: 8080
 
 app:
+  time:
+    zone-id: ${APP_TIME_ZONE:Europe/Kyiv}
   booking:
     max-concurrent-bookings: ${MAX_CONCURRENT_BOOKINGS:2}
     open-time: "${BOOKING_OPEN_TIME:09:30}"
@@ -45,6 +47,7 @@ app:
       - https://www.virtum-vr.com.ua
       - http://localhost:3000
       - http://localhost:5173
+      - http://127.0.0.1:5173
   integration:
     widget-script: "https://virtum-vr.com.ua/widget/booking.js"
   notifications:

@@ -15,7 +15,7 @@ public class AvailabilityBlock {
     @Column(length = 255)
     private String reason;
     @Column(nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
     public Long getId() { return id; }
     public LocalDateTime getStartsAt() { return startsAt; }
@@ -25,4 +25,5 @@ public class AvailabilityBlock {
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }
