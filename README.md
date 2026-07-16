@@ -49,8 +49,8 @@ docs/TESTING_AND_LAUNCH.md
     "active": true
   },
   {
-    "slug": "vr-sprint-120",
-    "title": "VR-спрінт 120 хв",
+    "slug": "vr-marathon-120",
+    "title": "VR-марафон 120 хв",
     "durationMinutes": 120,
     "price": 800.00,
     "currency": "UAH",
@@ -353,8 +353,8 @@ PAID
 
 ```json
 {
-  "slug": "vr-sprint-120",
-  "title": "VR-спрінт 120 хв",
+  "slug": "vr-marathon-120",
+  "title": "VR-марафон 120 хв",
   "durationMinutes": 120,
   "price": 800.00,
   "active": true

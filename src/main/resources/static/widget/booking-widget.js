@@ -672,7 +672,21 @@
       const usedHelmets = countOverlappingHelmets(startsAt, endsAt);
       const requestedHelmets = selectedHelmetsCount();
       const scheduleBreak = overlappingScheduleBreak(minute, minute + durationMinutes);
-      const closed = Boolean(scheduleBreak) || overlapsAvailabilityBlock(startsAt, endsAt);
+
+      if (scheduleBreak) {
+        if (minute === timeToMinutes(scheduleBreak.start)) {
+          slots.push({
+            disabled: true,
+            statusLabel: scheduleBreak.label,
+            label: `${scheduleBreak.start} - ${scheduleBreak.end}`,
+            value: "",
+          });
+        }
+
+        continue;
+      }
+
+      const closed = overlapsAvailabilityBlock(startsAt, endsAt);
       const availablePlaces = Math.max(config.maxConcurrentBookings - usedHelmets, 0);
       const booked = availablePlaces < requestedHelmets;
 
@@ -682,11 +696,9 @@
           ? "Недоступно"
           : booked
             ? availablePlaces > 0 ? `Лише ${availablePlaces}/${config.maxConcurrentBookings}` : "Зайнято"
-            : scheduleBreak
-              ? scheduleBreak.label
-              : closed
-                ? "Закрито"
-                : `Вільно ${availablePlaces}/${config.maxConcurrentBookings}`,
+            : closed
+              ? "Закрито"
+              : `Вільно ${availablePlaces}/${config.maxConcurrentBookings}`,
         label: `${time} - ${minutesToTime(minute + durationMinutes)}`,
         value: time,
       });
