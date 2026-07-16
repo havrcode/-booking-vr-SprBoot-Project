@@ -388,7 +388,9 @@ TELEGRAM_CHAT_ID=<chat-id>
     openTime: "09:30",
     closeTime: "20:30",
     breaks: [{ start: "14:30", end: "15:30", label: "Обід" }],
-    slotStepMinutes: 60
+    slotStepMinutes: 60,
+    weekdayHourlyPrice: 400,
+    weekendHourlyPrice: 500
   };
 </script>
 <script defer src="https://booking-api.virtum-vr.com.ua/widget/booking-widget.js"></script>

@@ -60,7 +60,7 @@ class BookingNotificationServiceTests {
                 "VR-вечірка 60 хв",
                 60,
                 1,
-                new BigDecimal("1200.00"),
+                new BigDecimal("400.00"),
                 "UAH",
                 "Тестовий клієнт",
                 "+380501234567",

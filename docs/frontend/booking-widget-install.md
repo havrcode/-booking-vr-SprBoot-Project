@@ -23,7 +23,9 @@
     openTime: "09:30",
     closeTime: "20:30",
     breaks: [{ start: "14:30", end: "15:30", label: "Обід" }],
-    slotStepMinutes: 60
+    slotStepMinutes: 60,
+    weekdayHourlyPrice: 400,
+    weekendHourlyPrice: 500
   };
 </script>
 <script defer src="https://booking-api.virtum-vr.com.ua/widget/booking-widget.js"></script>
@@ -49,9 +51,10 @@ Widget також намагається автоматично підхопит
 - завантажує payment settings з `GET /api/v1/booking-settings`;
 - перевіряє зайняті інтервали без персональних даних через `GET /api/v1/bookings?date=YYYY-MM-DD`;
 - перевіряє закриті адміністратором слоти через `GET /api/v1/availability-blocks?date=YYYY-MM-DD`;
+- спочатку показує один місяць календаря з активними/неактивними днями;
+- показує послуги окремими кнопками з цінами;
 - показує години як сітку слотів, де видно вільні місця з 2 VR-шоломів;
 - дозволяє клієнту обрати `1` або `2` шоломи в одному бронюванні;
-- показує календар днів на 2 місяці й блокує дні без вільних слотів;
 - не дає обрати обідню паузу `14:30-15:30`;
 - показує оплату в клубі або реквізити карти, якщо card transfer увімкнений на backend;
 - дозволяє додати скрін підтвердження оплати;
@@ -70,7 +73,9 @@ maxConcurrentBookings: 2,
 openTime: "09:30",
 closeTime: "20:30",
 breaks: [{ start: "14:30", end: "15:30", label: "Обід" }],
-slotStepMinutes: 60
+slotStepMinutes: 60,
+weekdayHourlyPrice: 400,
+weekendHourlyPrice: 500
 ```
 
 Widget автоматично читає `maxConcurrentBookings` і `schedule` з backend. Значення у snippet лишається fallback на випадок, якщо endpoint налаштувань недоступний. Якщо графік зміниться, онови backend ENV `BOOKING_OPEN_TIME`, `BOOKING_CLOSE_TIME`, `BOOKING_BREAK_START`, `BOOKING_BREAK_END`, `BOOKING_SLOT_STEP_MINUTES`.

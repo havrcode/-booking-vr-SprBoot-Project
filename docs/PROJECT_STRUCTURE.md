@@ -230,7 +230,7 @@ ADMIN_API_KEY
 Зараз seed data:
 
 - `vr-party-60`
-- `vr-arena-120`
+- `vr-sprint-120`
 
 Цей seeder лишається тільки стартовим bootstrap-механізмом. Нові production-послуги краще додавати через адмінку.
 
@@ -409,10 +409,10 @@ Payload для створення або оновлення VR-послуги:
 
 ```json
 {
-  "slug": "vr-arena-120",
-  "title": "VR-арена 120 хв",
+  "slug": "vr-sprint-120",
+  "title": "VR-спрінт 120 хв",
   "durationMinutes": 120,
-  "price": 2200.00,
+  "price": 800.00,
   "active": true
 }
 ```

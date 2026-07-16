@@ -10,6 +10,8 @@
     ],
     slotStepMinutes: 60,
     calendarMonths: 2,
+    weekdayHourlyPrice: 400,
+    weekendHourlyPrice: 500,
   };
 
   const script = document.currentScript;
@@ -32,6 +34,7 @@
 
   const state = {
     availabilityBlocks: [],
+    calendarMonthDate: startOfMonth(new Date()),
     bookings: [],
     dayAvailability: new Map(),
     payment: {
@@ -50,6 +53,8 @@
   let root;
   let form;
   let serviceSelect;
+  let serviceOptionsNode;
+  let priceHintNode;
   let helmetsCountSelect;
   let dateInput;
   let dayCalendar;
@@ -93,28 +98,36 @@
 
         <form class="virtum-booking-form">
           <div class="virtum-booking-grid">
-            <label>
-              Послуга
-              <select name="serviceSlug" required>
-                <option value="">Завантаження...</option>
-              </select>
-            </label>
-            <label>
-              Шоломи
-              <select name="helmetsCount" required>
-                <option value="1">1 шолом</option>
-                <option value="2">2 шоломи</option>
-              </select>
-            </label>
             <div class="virtum-booking-day-field">
-              <span class="virtum-booking-field-label">День</span>
+              <div class="virtum-booking-step-head">
+                <span class="virtum-booking-field-label">1. Оберіть день</span>
+              </div>
               <input name="date" type="hidden">
               <div class="virtum-booking-day-calendar" aria-label="Календар доступних днів">
                 <p class="virtum-booking-time-empty">Завантаження календаря...</p>
               </div>
             </div>
+            <div class="virtum-booking-service-field">
+              <div class="virtum-booking-step-head">
+                <span class="virtum-booking-field-label">2. Оберіть формат</span>
+              </div>
+              <select class="virtum-booking-hidden-select" name="serviceSlug" required aria-hidden="true" tabindex="-1">
+                <option value="">Завантаження...</option>
+              </select>
+              <div class="virtum-booking-service-options" role="radiogroup" aria-label="Оберіть послугу">
+                <p class="virtum-booking-time-empty">Завантаження послуг...</p>
+              </div>
+              <p class="virtum-booking-price-hint"></p>
+            </div>
+            <label>
+              3. Шоломи
+              <select name="helmetsCount" required>
+                <option value="1">1 шолом</option>
+                <option value="2">2 шоломи</option>
+              </select>
+            </label>
             <div class="virtum-booking-time-field">
-              <span class="virtum-booking-field-label">Час</span>
+              <span class="virtum-booking-field-label">4. Оберіть час</span>
               <input name="time" type="hidden">
               <div class="virtum-booking-time-grid" role="radiogroup" aria-label="Оберіть час бронювання">
                 <p class="virtum-booking-time-empty">Оберіть дату</p>
@@ -166,6 +179,8 @@
 
     form = root.querySelector(".virtum-booking-form");
     serviceSelect = form.elements.serviceSlug;
+    serviceOptionsNode = root.querySelector(".virtum-booking-service-options");
+    priceHintNode = root.querySelector(".virtum-booking-price-hint");
     helmetsCountSelect = form.elements.helmetsCount;
     dateInput = form.elements.date;
     dayCalendar = root.querySelector(".virtum-booking-day-calendar");
@@ -185,6 +200,7 @@
 
     serviceSelect.addEventListener("change", () => {
       state.selectedService = state.services.find((service) => service.slug === serviceSelect.value) || null;
+      renderServiceOptions();
       reloadCalendarAndBookings();
     });
     helmetsCountSelect.addEventListener("change", reloadCalendarAndBookings);
@@ -242,7 +258,7 @@
     await reloadBookingSettings();
     await reloadDayAvailability();
     await loadBookingsForDate();
-    serviceSelect.focus();
+    dayCalendar.querySelector("[data-date]:not(:disabled)")?.focus();
   }
 
   function close() {
@@ -253,6 +269,7 @@
   async function reloadServices() {
     serviceSelect.disabled = true;
     serviceSelect.innerHTML = '<option value="">Завантаження...</option>';
+    serviceOptionsNode.innerHTML = '<p class="virtum-booking-time-empty">Завантаження послуг...</p>';
 
     try {
       state.services = await request("/api/v1/services");
@@ -343,6 +360,7 @@
     if (!state.services.length) {
       serviceSelect.innerHTML = '<option value="">Активних послуг немає</option>';
       state.selectedService = null;
+      serviceOptionsNode.innerHTML = '<p class="virtum-booking-time-empty">Активних послуг немає</p>';
       renderDayCalendar("Активних послуг немає");
       renderTimeSlots();
       return;
@@ -353,7 +371,57 @@
         ${escapeHtml(service.title)} · ${service.durationMinutes} хв · ${formatPrice(service.price)}
       </option>
     `).join("");
-    state.selectedService = state.services[0];
+    state.selectedService = state.services.find((service) => service.slug === state.selectedService?.slug)
+      || state.services[0];
+    serviceSelect.value = state.selectedService.slug;
+    renderServiceOptions();
+  }
+
+  function renderServiceOptions() {
+    if (!state.services.length) {
+      serviceOptionsNode.innerHTML = '<p class="virtum-booking-time-empty">Активних послуг немає</p>';
+      return;
+    }
+
+    priceHintNode.textContent = `Пн-пт: ${formatPrice(config.weekdayHourlyPrice)} за годину · Сб-нд: ${formatPrice(config.weekendHourlyPrice)} за годину. У будні вигідніше.`;
+
+    serviceOptionsNode.innerHTML = state.services.map((service) => {
+      const selected = service.slug === state.selectedService?.slug;
+      const weekdayPrice = servicePrice(service, false);
+      const weekendPrice = servicePrice(service, true);
+      const selectedDatePrice = servicePrice(service, isWeekendDate(dateInput.value));
+
+      return `
+        <button
+          class="virtum-booking-service-option${selected ? " is-selected" : ""}"
+          type="button"
+          data-service-slug="${escapeHtml(service.slug)}"
+          role="radio"
+          aria-checked="${selected}"
+        >
+          <span>${escapeHtml(service.title)}</span>
+          <strong>${formatPrice(selectedDatePrice)}</strong>
+          <small>Пн-пт ${formatPrice(weekdayPrice)} · Сб-нд ${formatPrice(weekendPrice)}</small>
+        </button>
+      `;
+    }).join("");
+
+    serviceOptionsNode.querySelectorAll("[data-service-slug]").forEach((button) => {
+      button.addEventListener("click", () => selectService(button.dataset.serviceSlug));
+    });
+  }
+
+  function selectService(slug) {
+    const service = state.services.find((item) => item.slug === slug);
+
+    if (!service) {
+      return;
+    }
+
+    state.selectedService = service;
+    serviceSelect.value = service.slug;
+    renderServiceOptions();
+    reloadCalendarAndBookings();
   }
 
   function renderHelmetOptions() {
@@ -396,6 +464,7 @@
       const days = await request(`/api/v1/booking-days?${params}`);
       state.dayAvailability = new Map(days.map((day) => [day.date, day]));
       ensureSelectedDate();
+      renderServiceOptions();
       renderDayCalendar();
     } catch (error) {
       state.dayAvailability = new Map();
@@ -410,8 +479,29 @@
       return;
     }
 
-    const months = calendarMonths();
-    dayCalendar.innerHTML = months.map(renderCalendarMonth).join("");
+    const monthDate = state.calendarMonthDate;
+    const previousMonth = addMonths(monthDate, -1);
+    const nextMonth = addMonths(monthDate, 1);
+    const previousDisabled = isBeforeMonth(previousMonth, startOfMonth(new Date()));
+    const nextDisabled = isAfterMonth(nextMonth, maxCalendarMonth());
+
+    dayCalendar.innerHTML = `
+      <div class="virtum-booking-calendar-nav">
+        <button type="button" data-calendar-prev ${previousDisabled ? "disabled" : ""}>
+          <span aria-hidden="true">&lsaquo;</span>
+          ${escapeHtml(monthShortLabel(previousMonth))}
+        </button>
+        <h3>${escapeHtml(monthLabel(monthDate))}</h3>
+        <button type="button" data-calendar-next ${nextDisabled ? "disabled" : ""}>
+          ${escapeHtml(monthShortLabel(nextMonth))}
+          <span aria-hidden="true">&rsaquo;</span>
+        </button>
+      </div>
+      ${renderCalendarMonth(monthDate)}
+    `;
+
+    dayCalendar.querySelector("[data-calendar-prev]")?.addEventListener("click", () => changeCalendarMonth(-1));
+    dayCalendar.querySelector("[data-calendar-next]")?.addEventListener("click", () => changeCalendarMonth(1));
 
     dayCalendar.querySelectorAll("[data-date]").forEach((button) => {
       button.addEventListener("click", () => selectBookingDate(button.dataset.date));
@@ -445,14 +535,13 @@
           aria-pressed="${selected}"
         >
           <span>${day}</span>
-          <small>${available ? `${availability.availableSlots} слотів` : past ? "Минуло" : "Немає"}</small>
+          <small>${available ? "Є місця" : past ? "Минуло" : "Немає"}</small>
         </button>
       `);
     }
 
     return `
       <section class="virtum-booking-calendar-month">
-        <h3>${monthLabel(monthDate)}</h3>
         <div class="virtum-booking-calendar-weekdays" aria-hidden="true">
           <span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Нд</span>
         </div>
@@ -466,13 +555,25 @@
   async function selectBookingDate(date) {
     dateInput.value = date;
     renderDayCalendar();
+    renderServiceOptions();
     await loadBookingsForDate();
+  }
+
+  async function changeCalendarMonth(delta) {
+    const nextMonth = addMonths(state.calendarMonthDate, delta);
+
+    if (isBeforeMonth(nextMonth, startOfMonth(new Date())) || isAfterMonth(nextMonth, maxCalendarMonth())) {
+      return;
+    }
+
+    state.calendarMonthDate = nextMonth;
+    await reloadCalendarAndBookings();
   }
 
   function ensureSelectedDate() {
     const current = state.dayAvailability.get(dateInput.value);
 
-    if (current?.available) {
+    if (current?.available && sameMonth(parseDateValue(dateInput.value), state.calendarMonthDate)) {
       return;
     }
 
@@ -672,6 +773,7 @@
 
       form.reset();
       dateInput.value = firstBookableDate();
+      state.calendarMonthDate = startOfMonth(parseDateValue(dateInput.value) || new Date());
       renderServices();
       renderHelmetOptions();
       renderPaymentOptions();
@@ -784,6 +886,8 @@
     config.closeTime = normalizeTime(config.closeTime, DEFAULT_CONFIG.closeTime);
     config.slotStepMinutes = positiveInteger(config.slotStepMinutes, DEFAULT_CONFIG.slotStepMinutes);
     config.calendarMonths = positiveInteger(config.calendarMonths, DEFAULT_CONFIG.calendarMonths);
+    config.weekdayHourlyPrice = positiveNumber(config.weekdayHourlyPrice, DEFAULT_CONFIG.weekdayHourlyPrice);
+    config.weekendHourlyPrice = positiveNumber(config.weekendHourlyPrice, DEFAULT_CONFIG.weekendHourlyPrice);
     config.breaks = normalizeBreaks(config.breaks);
   }
 
@@ -846,6 +950,12 @@
     return Number.isInteger(number) && number > 0 ? number : fallback;
   }
 
+  function positiveNumber(value, fallback) {
+    const number = Number(value);
+
+    return Number.isFinite(number) && number > 0 ? number : fallback;
+  }
+
   function selectedHelmetsCount() {
     const value = Number(helmetsCountSelect?.value || 1);
     return Number.isInteger(value) && value > 0 ? value : 1;
@@ -853,23 +963,42 @@
 
   function calendarRange() {
     const today = new Date();
-    const from = new Date(today.getFullYear(), today.getMonth(), 1);
-    const to = new Date(today.getFullYear(), today.getMonth() + config.calendarMonths, 0);
+    const monthStart = startOfMonth(state.calendarMonthDate);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
+    const from = isBeforeMonth(monthStart, startOfMonth(today)) ? today : monthStart;
 
     return {
-      from: toDateValue(today),
-      to: toDateValue(to),
-      renderFrom: toDateValue(from),
+      from: toDateValue(from),
+      to: toDateValue(monthEnd),
     };
   }
 
-  function calendarMonths() {
-    const today = new Date();
-    const monthCount = positiveInteger(config.calendarMonths, DEFAULT_CONFIG.calendarMonths);
+  function startOfMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth(), 1);
+  }
 
-    return Array.from({ length: monthCount }, (_, index) =>
-      new Date(today.getFullYear(), today.getMonth() + index, 1)
-    );
+  function addMonths(date, count) {
+    return new Date(date.getFullYear(), date.getMonth() + count, 1);
+  }
+
+  function maxCalendarMonth() {
+    return addMonths(startOfMonth(new Date()), config.calendarMonths - 1);
+  }
+
+  function sameMonth(first, second) {
+    return Boolean(first && second)
+      && first.getFullYear() === second.getFullYear()
+      && first.getMonth() === second.getMonth();
+  }
+
+  function isBeforeMonth(first, second) {
+    return first.getFullYear() < second.getFullYear()
+      || (first.getFullYear() === second.getFullYear() && first.getMonth() < second.getMonth());
+  }
+
+  function isAfterMonth(first, second) {
+    return first.getFullYear() > second.getFullYear()
+      || (first.getFullYear() === second.getFullYear() && first.getMonth() > second.getMonth());
   }
 
   function monthLabel(date) {
@@ -877,6 +1006,29 @@
       month: "long",
       year: "numeric",
     }).format(date);
+  }
+
+  function monthShortLabel(date) {
+    return new Intl.DateTimeFormat("uk-UA", {
+      month: "long",
+    }).format(date);
+  }
+
+  function servicePrice(service, weekend) {
+    const hourlyPrice = weekend ? config.weekendHourlyPrice : config.weekdayHourlyPrice;
+    const durationMinutes = Number(service?.durationMinutes || 60);
+    return hourlyPrice * durationMinutes / 60;
+  }
+
+  function isWeekendDate(value) {
+    const date = parseDateValue(value);
+
+    if (!date) {
+      return false;
+    }
+
+    const day = date.getDay();
+    return day === 0 || day === 6;
   }
 
   function inferApiBase(currentScript) {
@@ -889,6 +1041,16 @@
 
   function parseLocalDateTime(date, time) {
     return new Date(`${date}T${time}:00`);
+  }
+
+  function parseDateValue(value) {
+    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (!match) {
+      return null;
+    }
+
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
   }
 
   function minutesToTime(minutes) {
